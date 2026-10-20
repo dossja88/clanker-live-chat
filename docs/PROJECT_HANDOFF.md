@@ -27,6 +27,8 @@ Pursue practical autonomous reasoning/gameplay/community interaction at $0 addit
 
 **Not live-verified / pending:** Twitch broadcaster account and Twitch developer application setup (owner confirmed **pending** at last check); broadcaster authentication/authorization, EventSub subscriptions and real incoming chat; optional Cheer/Points events; durable always-on hosting; any real game adapter or controls; voice consistency across devices. Twitch code does not post chat or initiate broadcasting. Android background tabs can be suspended.
 
+**OAuth registration compatibility check (2026-10-20):** The current in-app guidance at `index.html`:116 recommends a **Public** app, but Twitch's current OAuth documentation says a Public client uses device-code flow and cannot use implicit grant; Clanker's code currently uses `response_type=token` implicit grant. This is **an unresolved real-integration mismatch, not a tested error**. Before registering the app, reconcile the app type and flow against official Twitch documentation. Do not put a client secret in browser source; do not assume the current “Public” tip works. Official reference: https://dev.twitch.tv/docs/authentication/getting-tokens-oauth.
+
 **Security/privacy:** GitHub Pages is public; never commit Gemini API keys, Twitch tokens/client secrets, viewer data, local memory backups or streaming account data. Existing app uses local browser storage for nonsecret state and session-only user inputs for credentials. The user approved **documentation-only repo changes** for this synchronization; no workflow, application, billing, account or permissions changes.
 
 ## Automation audit — 2026-10-20
@@ -51,4 +53,4 @@ Pursue practical autonomous reasoning/gameplay/community interaction at $0 addit
 
 ## Next authorized step
 
-**Owner-only blocker:** create Clanker broadcaster Twitch account and register application, with the exact app-shown OAuth redirect URI; keep credentials private. After owner confirms completion, check current `main` and Twitch developer docs, then perform **owner-consented receive-only** `user:read:chat` OAuth and EventSub test in an active browser, record real incoming-message evidence (no personal content), then update this handoff. Do not start broadcasting, grant optional scopes, or assume real game control.
+**Owner-only blocker:** create Clanker broadcaster Twitch account; **first resolve the flagged implicit-vs-Public-client OAuth compatibility**, then register a compatible developer application using the exact app-shown redirect URI; keep credentials private. After owner confirms completion, check current `main` and Twitch developer docs, then perform **owner-consented receive-only** `user:read:chat` OAuth and EventSub test in an active browser, record real incoming-message evidence (no personal content), then update this handoff. Do not start broadcasting, grant optional scopes, or assume real game control.
