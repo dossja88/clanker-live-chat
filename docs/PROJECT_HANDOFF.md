@@ -1,5 +1,9 @@
 # Clanker AI — canonical project handoff
 
+## Owner decision — creator Google account for new work (2026-10-20)
+
+All newly approved Google Drive/cloud/YouTube storage and project-specific automation should use the separate creator account; do not route new work through the owner's personal Google account. The existing private Clanker / AI Gamer project folder was verified through the creator Drive connector as not shared with the creator as sole owner, but **no folder identifiers or creator account secrets are recorded in this public repo**. No Google integration is required for the current browser-only v2.5 experience; do not add dependencies/hosting/authentication solely for migration. The personal account is a preserved legacy archive/recovery source, not a new-work fallback. No historical files are moved, copied or deleted without per-item owner approval and verification. Keep existing GitHub repository and all Clanker gameplay/voice/broadcast approval gates. A creator Drive connector is not app-level OAuth permission; validate any new writer separately just in time. No billing, account, permissions, deployment or livestream changes authorized.
+
 **Updated:** 2026-10-20 (documentation alignment).
 **Repository:** https://github.com/dossja88/clanker-live-chat
 **Branch:** `main` (the only branch returned by GitHub on audit).

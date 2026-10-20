@@ -1,5 +1,11 @@
 # AGENTS.md — Clanker AI operating rules
 
+## Future project Google-account boundary (owner decision, 2026-10-20)
+
+When this project later needs Google Drive/cloud/YouTube or project-owned notifications, select the **dedicated creator Google account** rather than the owner's personal Google account. A creator-owned, owner-only private Clanker / AI Gamer folder already exists, but a folder does not grant this browser app or a future standalone OAuth client automatic access. Do not introduce Google dependencies where current offline/browser/GitHub operation works; defer authenticated access to the first specific approved need. Never use personal Google grants/credentials as a fallback, import another project's secrets, or create public links to private project materials. Preserve all older personal-account files and links without wholesale migration, changing permissions, deleting or transferring ownership. A selected manual copy of a legacy file needs separate authorization plus content/owner/ACL/link verification.
+
+**This GitHub repository is public.** Never include the creator email address, private Google folder IDs/links, credential paths, authentication details or account identifiers in commits, source, tests or handoff. Preserve existing GitHub ownership, history and browser-first Clanker runtime. The default is a planning/account-selection rule, **not** authority for new accounts, Google API calls, software installation, uploads, deployment, livestreaming or billing. Continue $0 recurring operation and existing owner approval/security gates.
+
 These are project-specific instructions; they supplement, never replace, the user's currently effective global **Automation-First Contract**. If the global contract or ChatGPT Project settings are not accessible verbatim, state the limitation rather than inventing their contents.
 
 ## Identity and requirements
