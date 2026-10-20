@@ -32,4 +32,4 @@ Target practical automation with **$0 added recurring operating cost**. Billing 
 
 ## Next milestone
 
-Once the owner has created a Twitch account and registered a developer application, validate receive-only broadcaster-authenticated EventSub delivery from a real chat message, without transmitting chat, starting a stream, or disclosing tokens. Consult `docs/PROJECT_HANDOFF.md` for the up-to-date status before acting.
+After the owner-reported successful Twitch OAuth/EventSub connection, test real incoming message delivery without another account using the opt-in **Arm one-time self-test** control. Post the displayed `!clanker-check 123456`-style unique phrase as the broadcaster in Twitch channel chat. A randomly generated phrase is valid for three minutes and never enters viewer memory, analytics, soundboard or replies. Only real EventSub delivery can produce a PASS; no live PASS has been reported yet. The app remains read-only, and no stream is required. See `docs/PROJECT_HANDOFF.md` for current status.
