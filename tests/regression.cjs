@@ -36,12 +36,14 @@ function storage(){const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(
 function boot(network=false,forgetName=null,geminiResponder=null){
   const elements=new Map(ids.map(id=>[id,new Element(id)]));
   const get=id=>{if(!elements.has(id))elements.set(id,new Element(id));return elements.get(id);};
+  const documentEvents={};
   const document={getElementById:get,createElement:t=>new Element('',t),createElementNS:(_,t)=>new Element('',t),
     createTextNode:s=>Object.assign(new Element(),{textContent:s}),createDocumentFragment:()=>new Element(),
-    querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){},hidden:false,body:new Element('body')};
+    querySelectorAll:()=>[],querySelector:()=>null,addEventListener:(type,fn)=>{(documentEvents[type]??=[]).push(fn);},
+    hidden:false,body:new Element('body')};
   for(const [k,v] of Object.entries({provider:'offline',scenario:'outpost',twitchPolicy:'addressed',
     twitchVoicePolicy:'manual',policyVerdict:'unknown',avatarPreview:'auto',analyticsScope:'on'}))get(k).value=v;
-  const calls=[],sockets=[];
+  const calls=[],sockets=[],intervals=new Map();let nextTimerId=10;
   class Socket{
     static OPEN=1;
     constructor(url){assert.ok(network,'Offline flow tried to open a socket');
@@ -73,13 +75,18 @@ function boot(network=false,forgetName=null,geminiResponder=null){
   const context={document,window:{location,crypto:{getRandomValues:a=>a.fill(123456)},addEventListener(){}},
     location,localStorage:storage(),sessionStorage:storage(),fetch:fetchMock,WebSocket:Socket,
     crypto:{getRandomValues:a=>a.fill(123456)},navigator:{clipboard:{writeText:async()=>{}}},
-    history:{replaceState(){}},setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},
+    history:{replaceState(){}},setTimeout:()=>1,clearTimeout(){},
+    setInterval:(fn,ms)=>{const id=nextTimerId++;intervals.set(id,{fn,ms});return id;},
+    clearInterval:id=>intervals.delete(id),
     requestAnimationFrame:f=>f(),speechSynthesis:{cancel(){},speak(){}},
     SpeechSynthesisUtterance:class{},Blob:class{},URL,TextEncoder,TextDecoder,
     AbortController:class{constructor(){this.signal={aborted:false}}abort(){this.signal.aborted=true}},
     alert(){},confirm:()=>false,prompt:()=>forgetName,console};
   vm.runInNewContext(script,context,{timeout:2500,filename:'index.html:inline'});
-  return {get,calls,sockets,localStorage:context.localStorage};
+  return {get,calls,sockets,localStorage:context.localStorage,
+    tickIntervals:async()=>{for(const {fn} of [...intervals.values()])await fn();},
+    getIntervalCount:()=>intervals.size,setHidden:v=>{document.hidden=Boolean(v);
+      for(const f of documentEvents.visibilitychange||[])f();}};
 }
 async function scenario(name,action){
   const b=boot();await action(b.get);
@@ -476,6 +483,87 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.equal(puzzle.localStorage.getItem('clanker.brain.v1'),starting);
   assert.equal(puzzle.calls.length,0);
   console.log('PASS 2048 source spoof, malformed tiles, injection and oversized data rejected without effects');
+
+
+  // Real local game: clicking New starts a playable tile board, not an external host.
+  const local=boot(),$local=local.get,savedLocal=local.localStorage.getItem('clanker.brain.v1');
+  assert.equal($local('play2048Board').children.length,0);
+  await $local('play2048New').fire('click');
+  function localTiles(){return $local('play2048Board').children.map(c=>c.textContent);}
+  assert.equal(localTiles().length,16);
+  assert.equal(localTiles().filter(v=>v!=='·').length,2);
+  assert.equal($local('play2048Score').textContent,'0');
+  assert.equal($local('play2048Turns').textContent,'0');
+  assert.equal(local.getIntervalCount(),0);
+  assert.equal(local.calls.length,0);
+  console.log('PASS playable local 2048 initializes exactly two random tiles, no autoplay');
+
+  await $local('play2048Step').fire('click');
+  assert.equal($local('play2048Turns').textContent,'1');
+  assert.equal(localTiles().length,16);
+  assert.equal(localTiles().filter(v=>v!=='·').length>=2,true);
+  assert.match($local('play2048Commentary').textContent,/Clanker/);
+  assert.equal(local.getIntervalCount(),0);
+  assert.equal(local.localStorage.getItem('clanker.brain.v1'),savedLocal);
+  console.log('PASS Clanker chose and executed actual local move with random tile spawn');
+
+  // Owner can perform an actual manual legal move, without activating autoplay.
+  const turnsBefore=Number($local('play2048Turns').textContent);
+  for(const dir of ['play2048Left','play2048Down','play2048Up','play2048Right'])
+    await $local(dir).fire('click');
+  assert.equal(Number($local('play2048Turns').textContent)>turnsBefore,true);
+  assert.equal(local.getIntervalCount(),0);
+  assert.equal(local.calls.length,0);
+  console.log('PASS four directional manual puzzle buttons work with no timer or network');
+
+  await $local('play2048Start').fire('click');
+  assert.equal(local.getIntervalCount(),1);
+  assert.equal($local('play2048Start').disabled,true);
+  const preAuto=Number($local('play2048Turns').textContent);
+  await local.tickIntervals();
+  assert.equal(Number($local('play2048Turns').textContent)>preAuto,true);
+  await $local('play2048Stop').fire('click');
+  const stopped=Number($local('play2048Turns').textContent);
+  assert.equal(local.getIntervalCount(),0);
+  assert.equal($local('play2048Start').disabled,false);
+  await local.tickIntervals();
+  assert.equal(Number($local('play2048Turns').textContent),stopped);
+  assert.match($local('play2048Status').textContent,/STOP/);
+  console.log('PASS opt-in Clanker autoplay ticks, STOP clears timer and prevents late moves');
+
+  await $local('play2048Start').fire('click');
+  assert.equal(local.getIntervalCount(),1);
+  local.setHidden(true);
+  assert.equal(local.getIntervalCount(),0);
+  assert.match($local('play2048Status').textContent,/hidden/);
+  const hiddenMoves=Number($local('play2048Turns').textContent);
+  await local.tickIntervals();
+  assert.equal(Number($local('play2048Turns').textContent),hiddenMoves);
+  await $local('play2048Start').fire('click');
+  assert.equal(local.getIntervalCount(),0);
+  local.setHidden(false);
+  console.log('PASS background tab stops autoplay and cannot restart while hidden');
+
+  await $local('play2048Start').fire('click');
+  assert.equal(local.getIntervalCount(),1);
+  await $local('play2048New').fire('click');
+  assert.equal(local.getIntervalCount(),0);
+  assert.equal($local('play2048Turns').textContent,'0');
+  assert.equal(localTiles().filter(v=>v!=='·').length,2);
+  assert.equal(local.localStorage.getItem('clanker.brain.v1'),savedLocal);
+  assert.equal(local.calls.length,0);
+  console.log('PASS new game resets puzzle only, clears timer and leaves Clanker backup intact');
+
+  // Safety cap and terminal loss are independent of any manual observation JSON.
+  const capped=boot(),$cap=capped.get;
+  await $cap('play2048New').fire('click');
+  await $cap('play2048Start').fire('click');
+  for(let n=0;n<140&&capped.getIntervalCount();n++)await capped.tickIntervals();
+  assert.equal(capped.getIntervalCount(),0);
+  assert.equal(Number($cap('play2048Turns').textContent)<=128,true);
+  assert.equal(capped.calls.length,0);
+  assert.equal($cap('play2048Start').disabled,false);
+  console.log('PASS autoplay terminates by game end or hard 128-step cap without external calls');
 
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

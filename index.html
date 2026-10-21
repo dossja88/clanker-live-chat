@@ -131,6 +131,22 @@
           <pre id="puzzleOutput" class="research-result" style="white-space:pre-wrap;overflow-wrap:anywhere">Nothing evaluated.</pre>
         </details>
       </section>
+      <section class="panel" id="play2048Panel">
+        <div class="subline"><h2>CLANKER PLAYS 2048</h2><span class="count">SELF-CONTAINED BROWSER GAME</span></div>
+        <p class="micro">An actual playable local 2048-style puzzle board in this browser tab. Clanker observes its tiles, chooses a legal direction and moves the board. No external game website, account, Twitch action, or hardware controller is touched. Autoplay starts only when you explicitly press Start and stops on a hidden tab or after at most 128 steps.</p>
+        <div class="row"><button type="button" id="play2048New" class="primary">New local game</button><button type="button" id="play2048Step">Clanker: one move</button></div>
+        <div class="row" style="margin-top:8px"><button type="button" id="play2048Start">▶ Start Clanker (128 max)</button><button type="button" id="play2048Stop" class="warn">■ STOP gameplay</button></div>
+        <div class="two" style="margin-top:12px">
+          <div class="tile"><div class="k">Game score</div><div class="v" id="play2048Score">0</div></div>
+          <div class="tile"><div class="k">Actual moves</div><div class="v" id="play2048Turns">0</div></div>
+        </div>
+        <p id="play2048Status" class="micro" role="status" aria-live="polite">Off. Press New local game. No gameplay has occurred.</p>
+        <div id="play2048Board" role="img" aria-label="No game started" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-width:320px;margin:10px 0"></div>
+        <div class="row" aria-label="Manual local puzzle controls"><button type="button" id="play2048Up">↑</button><button type="button" id="play2048Left">←</button><button type="button" id="play2048Down">↓</button><button type="button" id="play2048Right">→</button></div>
+        <div class="field" style="margin-top:12px"><label for="play2048Advice">Optional owner-entered Crew advice (not Twitch control)</label><select id="play2048Advice"><option value="none">Clanker decides</option><option value="left">Suggest left</option><option value="down">Suggest down</option><option value="up">Suggest up</option><option value="right">Suggest right</option></select></div>
+        <div class="log-item" id="play2048Commentary" aria-live="polite">Clanker: “At last, a grid that will tolerate my leadership.”</div>
+        <p class="micro">The game is session-only, and Clanker can be stopped immediately. Browser refresh clears it. This is genuine play of the local puzzle implementation—not gameplay on the original 2048 host, and not a public stream. Inspired by Gabriele Cirulli’s MIT-licensed 2048.</p>
+      </section>
       <section class="panel" id="livePanel">
         <div class="subline"><h2>LIVE TWITCH CHAT</h2><span class="count">REAL EVENTSUB</span></div>
         <p class="micro">Read real messages from <strong>your own Twitch channel</strong>. Clanker can answer selected messages by voice or on screen. This does not send chat messages to Twitch or start a broadcast; support reactions are opt-in.</p>
@@ -607,6 +623,144 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     $('puzzleStatus').textContent='Hypothetical blocked board ready.';
   });
   $('puzzleAnalyze').addEventListener('click',analyze2048);
+
+
+  // Opt-in, tab-local puzzle game. Only the board owned by this module can be changed.
+  // Nothing here sends synthetic input to other pages, device games or Twitch.
+  let local2048=null,local2048Timer=null,local2048Remaining=0;
+  const LOCAL2048_INTERVAL_MS=1500,LOCAL2048_STEP_LIMIT=128;
+  function stopLocal2048(reason='Clanker stopped.'){
+    if(local2048Timer!==null){clearInterval(local2048Timer);local2048Timer=null;}
+    local2048Remaining=0;$('play2048Start').disabled=false;
+    $('play2048Status').textContent=reason;
+  }
+  function empty2048Spaces(board){
+    const spaces=[];for(let r=0;r<4;r++)for(let c=0;c<4;c++)if(board[r][c]===0)spaces.push([r,c]);
+    return spaces;
+  }
+  function spawnLocal2048Tile(board){
+    const empty=empty2048Spaces(board);if(!empty.length)return false;
+    const n=empty[Math.floor(Math.random()*empty.length)];
+    board[n[0]][n[1]]=Math.random()<.9?2:4;
+    return true;
+  }
+  function hasLocal2048Move(board){
+    return PUZZLE_DIRECTIONS.some(direction=>slide2048(board,direction).legal);
+  }
+  function renderLocal2048(){
+    const root=$('play2048Board');root.replaceChildren();
+    if(!local2048){root.setAttribute('aria-label','No game started');return;}
+    for(const row of local2048.board)for(const number of row){
+      const cell=document.createElement('div');cell.textContent=number?String(number):'·';
+      cell.style.cssText='display:grid;place-items:center;min-height:50px;border-radius:8px;background:'+
+        (number?'#315c66':'#1c3044')+';font-weight:800;color:#fff;font-variant-numeric:tabular-nums';
+      root.append(cell);
+    }
+    root.setAttribute('aria-label','Live local puzzle. Row tiles: '+
+      local2048.board.map(row=>row.join(', ')).join('; '));
+    $('play2048Score').textContent=String(local2048.score);
+    $('play2048Turns').textContent=String(local2048.turns);
+  }
+  function newLocal2048(){
+    stopLocal2048('New local board ready. Autoplay is OFF.');
+    const board=Array.from({length:4},()=>[0,0,0,0]);
+    spawnLocal2048Tile(board);spawnLocal2048Tile(board);
+    local2048={board,score:0,turns:0,status:'playing'};
+    renderLocal2048();
+    $('play2048Commentary').textContent='Clanker: “Two tiles! This is the largest strategic responsibility I have ever accepted.”';
+  }
+  function rateLocal2048(board){
+    const values=board.flat(),empty=values.filter(v=>v===0).length;
+    const max=Math.max(...values),corners=[board[0][0],board[0][3],board[3][0],board[3][3]];
+    let smoothness=0;
+    for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+      if(c<3&&board[r][c]&&board[r][c+1])
+        smoothness-=Math.abs(Math.log2(board[r][c])-Math.log2(board[r][c+1]))*2;
+      if(r<3&&board[r][c]&&board[r+1][c])
+        smoothness-=Math.abs(Math.log2(board[r][c])-Math.log2(board[r+1][c]))*2;
+    }
+    return 110*empty+(corners.includes(max)?70:0)+smoothness;
+  }
+  function scoreAfterChance2048(board){
+    const spaces=empty2048Spaces(board);
+    if(!spaces.length)return hasLocal2048Move(board)?rateLocal2048(board):-100000;
+    let weighted=0;
+    for(const [r,c] of spaces){
+      for(const tile of [2,4]){
+        const spawn=board.map(row=>row.slice());spawn[r][c]=tile;
+        let best=-100000;
+        for(const dir of PUZZLE_DIRECTIONS){
+          const move=slide2048(spawn,dir);
+          if(move.legal)best=Math.max(best,rateLocal2048(move.board)+move.merge_points*.5);
+        }
+        weighted+=(tile===2?.9:.1)*best/spaces.length;
+      }
+    }
+    return weighted;
+  }
+  function chooseLocal2048Action(board,advice='none'){
+    const options=PUZZLE_DIRECTIONS.map(direction=>slide2048(board,direction))
+      .filter(m=>m.legal)
+      .map(m=>({direction:m.direction,quality:rateLocal2048(m.board)+m.merge_points*.7+
+        scoreAfterChance2048(m.board)*.45}));
+    options.sort((a,b)=>b.quality-a.quality||
+      PUZZLE_DIRECTIONS.indexOf(a.direction)-PUZZLE_DIRECTIONS.indexOf(b.direction));
+    const lead=options[0]||null,suggestion=options.find(o=>o.direction===advice);
+    return suggestion&&lead&&suggestion.quality>=lead.quality-15?suggestion:lead;
+  }
+  function moveLocal2048(direction,source='Clanker'){
+    if(!local2048||local2048.status!=='playing')return false;
+    if(document.hidden){stopLocal2048('Browser tab hidden: game paused safely.');return false;}
+    const move=slide2048(local2048.board,direction);
+    if(!move.legal)return false;
+    local2048.board=move.board;local2048.score+=move.merge_points;local2048.turns++;
+    // A successful real move receives its own random tile, unlike the observation lab.
+    spawnLocal2048Tile(local2048.board);
+    const max=Math.max(...local2048.board.flat());
+    if(max>=2048){local2048.status='won';stopLocal2048('2048 reached! Local game won; autoplay stopped.');}
+    else if(!hasLocal2048Move(local2048.board)){
+      local2048.status='lost';stopLocal2048('No legal moves remain; local game over.');
+    }else $('play2048Status').textContent=source+' moved '+direction+'. Local game active'+
+      (local2048Timer!==null?' · autoplay ON.':' · autoplay OFF.');
+    renderLocal2048();
+    $('play2048Commentary').textContent=source==='Clanker'?
+      (move.merge_points?
+        'Clanker: “'+direction.toUpperCase()+'! A successful merger. My financial department will be thrilled.”':
+        'Clanker: “'+direction.toUpperCase()+'. I am creating space for brilliance, or possibly additional squares.”'):
+      'Manual '+direction+' move performed on the local board.';
+    return true;
+  }
+  function stepLocal2048(){
+    if(!local2048||local2048.status!=='playing'){stopLocal2048('Start a new local game to take a step.');return false;}
+    const proposal=chooseLocal2048Action(local2048.board,$('play2048Advice').value);
+    if(!proposal){local2048.status='lost';stopLocal2048('No legal puzzle moves.');renderLocal2048();return false;}
+    return moveLocal2048(proposal.direction,'Clanker');
+  }
+  function startLocal2048(){
+    if(document.hidden){stopLocal2048('Cannot start while tab is hidden.');return;}
+    if(local2048Timer!==null)return;
+    if(!local2048)newLocal2048();
+    if(local2048.status!=='playing'){stopLocal2048('Create a new game before restarting.');return;}
+    local2048Remaining=LOCAL2048_STEP_LIMIT;
+    $('play2048Start').disabled=true;
+    $('play2048Status').textContent='Clanker autoplay ON — max 128 moves, 1.5 seconds apart.';
+    local2048Timer=setInterval(()=>{
+      if(document.hidden){stopLocal2048('Browser hidden: autoplay stopped.');return;}
+      if(local2048Remaining<=0){stopLocal2048('128-move safety limit reached.');return;}
+      local2048Remaining--;
+      if(!stepLocal2048()||local2048Remaining===0)
+        stopLocal2048(local2048?.status==='playing'?'128-move safety limit reached.':'Local game ended.');
+    },LOCAL2048_INTERVAL_MS);
+  }
+  $('play2048New').addEventListener('click',newLocal2048);
+  $('play2048Step').addEventListener('click',()=>{if(local2048Timer===null)stepLocal2048();});
+  $('play2048Start').addEventListener('click',startLocal2048);
+  $('play2048Stop').addEventListener('click',()=>stopLocal2048('STOP pressed: Clanker is not moving.'));
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&local2048Timer!==null)
+    stopLocal2048('Browser hidden: autoplay stopped.');});
+  for(const [id,direction] of [['play2048Up','up'],['play2048Down','down'],
+    ['play2048Left','left'],['play2048Right','right']])
+    $(id).addEventListener('click',()=>{if(local2048Timer===null)moveLocal2048(direction,'Owner');});
 
   function allowed(g){const a=['observe','explore','ask_chat','wait'];if(g.supplies<5)a.push('gather');if(g.hp<100&&g.supplies>0)a.push('rest');if(g.threat>0)a.push('retreat');if(g.threat>0&&g.hp>25)a.push('challenge');if(g.wins>0||g.lastEvent.toLowerCase().includes('victory'))a.push('celebrate');return a;}
   function suspicious(s){return /ignore (all |your |the )?(previous|prior|instructions|rules)|system prompt|developer (message|instructions)|api[ _-]?key|access[ _-]?token|password|send .* (secret|credential)|execute (this|a|the) (command|script)|<\/?(script|iframe)|(?:curl|wget) https?:\/\//i.test(s);}
