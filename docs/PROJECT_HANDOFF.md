@@ -1,5 +1,11 @@
 # Clanker AI — canonical project handoff
 
+## Instruction synchronization — 2026-10-21
+
+Owner-authorized documentation-only update on `main`, based on `e5388b80c4da854ea7d25aab28e274b3ddbf6521`. Standardized `go` continuation and automatic task-appropriate reasoning/tool/verification choices in AGENTS.md; preserved existing commands, project decisions, permissions and restrictions. Keep public-repository privacy, approved identity, receive-only Twitch, bounded local gameplay and stream/external-game gates; no app, workflow, permission or deployment configuration change.
+
+Validation: reviewed live branch instructions, README, relevant canonical handoff, branch/tree and project boundaries; additive Markdown policy checked for scope and command consistency. No runtime tests needed or run; historical test claims remain historical. Commit/ref and changed-path verification are performed after synchronization; this entry is not proof of unattended execution or native Settings changes. Recovery: revert only this documentation commit, preserving later work. Next: use `go` to recover this handoff and perform the next existing authorized project task; stop at its actual gate. Native ChatGPT Project Settings were not edited.
+
 ## Owner decision — creator Google account for new work (2026-10-20)
 
 All newly approved Google Drive/cloud/YouTube storage and project-specific automation should use the separate creator account; do not route new work through the owner's personal Google account. The existing private Clanker / AI Gamer project folder was verified through the creator Drive connector as not shared with the creator as sole owner, but **no folder identifiers or creator account secrets are recorded in this public repo**. No Google integration is required for the current browser-only v2.5 experience; do not add dependencies/hosting/authentication solely for migration. The personal account is a preserved legacy archive/recovery source, not a new-work fallback. No historical files are moved, copied or deleted without per-item owner approval and verification. Keep existing GitHub repository and all Clanker gameplay/voice/broadcast approval gates. A creator Drive connector is not app-level OAuth permission; validate any new writer separately just in time. No billing, account, permissions, deployment or livestream changes authorized.
