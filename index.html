@@ -119,6 +119,17 @@
           <p id="observationStatus" class="micro" role="status" aria-live="polite">No observation evaluated.</p>
           <pre id="observationOutput" class="research-result" style="white-space:pre-wrap;overflow-wrap:anywhere">Nothing evaluated.</pre>
         </details>
+        <details class="advanced" id="puzzle2048Panel">
+          <summary>2048 board analysis — manual, read-only</summary>
+          <p class="micro">Inspect a 4×4 puzzle board and propose one legal slide. Nothing touches a game website; random tile spawning, inputs, and scoring are never executed.</p>
+          <div class="row" style="margin:12px 0"><button type="button" id="puzzleSample">Load example</button><button type="button" id="puzzleBlocked">Load blocked board</button></div>
+          <div class="field"><label for="puzzleInput">Manual board JSON</label><textarea id="puzzleInput" rows="6" maxlength="1400" spellcheck="false"></textarea></div>
+          <div class="field"><label for="puzzleAdvice">Crew suggests a direction (optional)</label><select id="puzzleAdvice"><option value="none">No advice</option><option value="up">Up</option><option value="down">Down</option><option value="left">Left</option><option value="right">Right</option></select></div>
+          <button type="button" class="primary" id="puzzleAnalyze">Analyze board — never play</button>
+          <p class="micro" id="puzzleStatus" role="status" aria-live="polite">No board evaluated.</p>
+          <div id="puzzleGrid" role="img" aria-label="No board evaluated" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-width:300px;margin:10px 0"></div>
+          <pre id="puzzleOutput" class="research-result" style="white-space:pre-wrap;overflow-wrap:anywhere">Nothing evaluated.</pre>
+        </details>
       </section>
       <section class="panel" id="livePanel">
         <div class="subline"><h2>LIVE TWITCH CHAT</h2><span class="count">REAL EVENTSUB</span></div>
@@ -507,6 +518,95 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     $('observationStatus').textContent='Hypothetical sample loaded; not a real game observation.';
   });
   $('evaluateObservation').addEventListener('click',evaluateObservationLab);
+
+
+  // 2048 puzzle study has no game controls and never mutates the simulator.
+  const PUZZLE_SCHEMA='clanker.2048.board.v1';
+  const PUZZLE_DIRECTIONS=['left','down','up','right'];
+  function parse2048Board(data){
+    if(!data||typeof data!=='object'||Array.isArray(data)||
+      Object.keys(data).length!==2||!Object.hasOwn(data,'schema')||!Object.hasOwn(data,'board')||
+      data.schema!==PUZZLE_SCHEMA)throw Error('Expected exactly schema and board.');
+    if(!Array.isArray(data.board)||data.board.length!==4||
+       data.board.some(r=>!Array.isArray(r)||r.length!==4))throw Error('Board must be 4 by 4.');
+    for(const row of data.board)for(const v of row){
+      if(!Number.isSafeInteger(v)||v<0||v>131072||(v!==0&&(v&(v-1))!==0))
+        throw Error('Tiles must be zero or powers of two up to 131072.');
+    }
+    return data.board.map(r=>r.slice());
+  }
+  function slide2048(board,dir){
+    if(!PUZZLE_DIRECTIONS.includes(dir))throw Error('Unknown direction.');
+    const after=board.map(r=>r.slice());let mergePoints=0;
+    for(let k=0;k<4;k++){
+      const spots=[];
+      for(let n=0;n<4;n++)spots.push(dir==='left'?[k,n]:
+        dir==='right'?[k,3-n]:dir==='up'?[n,k]:[3-n,k]);
+      const nonempty=spots.map(([r,c])=>board[r][c]).filter(Boolean),joined=[];
+      for(let n=0;n<nonempty.length;n++){
+        if(n+1<nonempty.length&&nonempty[n]===nonempty[n+1]){
+          joined.push(nonempty[n]*2);mergePoints+=nonempty[n]*2;n++;
+        }else joined.push(nonempty[n]);
+      }
+      spots.forEach(([r,c],n)=>{after[r][c]=joined[n]||0;});
+    }
+    return {direction:dir,legal:after.some((r,i)=>r.some((v,j)=>v!==board[i][j])),
+      board:after,merge_points:mergePoints};
+  }
+  function study2048(board,advice){
+    const maxTile=Math.max(...board.flat());
+    const choices=PUZZLE_DIRECTIONS.map(d=>slide2048(board,d)).filter(m=>m.legal).map(m=>{
+      const empty=m.board.flat().filter(v=>v===0).length;
+      const corners=[m.board[0][0],m.board[0][3],m.board[3][0],m.board[3][3]];
+      return {...m,empty,rank:empty*24+m.merge_points/4+(corners.includes(maxTile)?14:0)};
+    }).sort((a,b)=>b.rank-a.rank||PUZZLE_DIRECTIONS.indexOf(a.direction)-PUZZLE_DIRECTIONS.indexOf(b.direction));
+    const suggested=PUZZLE_DIRECTIONS.includes(advice)?advice:null;
+    const requested=choices.find(m=>m.direction===suggested),best=choices[0];
+    const chosen=requested&&requested.rank>=best.rank-12?requested:best;
+    return {schema:PUZZLE_SCHEMA,origin:'manual_lab',status:chosen?'proposal_only':'blocked',
+      candidate:chosen?.direction||null,
+      advice_status:!suggested?'no advice':!requested?'rejected: illegal move':
+        chosen===requested?'considered and compatible':'considered but declined',
+      legal_moves:choices.map(m=>({direction:m.direction,empty_after:m.empty,
+        merge_points:m.merge_points,heuristic_score:m.rank})),
+      preview_board:chosen?.board||null,preview_merge_points:chosen?.merge_points||0,
+      preview_note:'Only a deterministic slide is predicted; the real game would add a random tile.',
+      execution:'NONE',authorization:'NOT AUTHORIZED FOR REAL GAME CONTROL'};
+  }
+  function draw2048(board){
+    const grid=$('puzzleGrid');grid.replaceChildren();
+    for(const row of board)for(const n of row){
+      const cell=document.createElement('div');cell.textContent=n?String(n):'·';
+      cell.style.cssText='display:grid;place-items:center;min-height:45px;border-radius:8px;background:'+
+        (n?'#30566a':'#213246')+';color:#fff;font-weight:750';
+      grid.append(cell);
+    }
+    grid.setAttribute('aria-label','Manual puzzle rows: '+board.map(r=>r.join(', ')).join('; '));
+  }
+  function analyze2048(){
+    $('puzzleGrid').replaceChildren();$('puzzleOutput').textContent='No candidate move.';
+    try{
+      const raw=$('puzzleInput').value;
+      if(raw.length>1400)throw Error('Board exceeds 1400 characters.');
+      const board=parse2048Board(JSON.parse(raw));
+      const result=study2048(board,$('puzzleAdvice').value);
+      draw2048(board);$('puzzleOutput').textContent=JSON.stringify(result,null,2);
+      $('puzzleStatus').textContent=result.candidate?
+        'Hypothetical '+result.candidate.toUpperCase()+' slide proposed. No action executed.':
+        'No legal slide; board blocked. No action executed.';
+    }catch(e){$('puzzleStatus').textContent='Rejected board: '+cap(e.message,140);}
+  }
+  $('puzzleSample').addEventListener('click',()=>{
+    $('puzzleInput').value=JSON.stringify({schema:PUZZLE_SCHEMA,
+      board:[[2,2,4,4],[0,2,4,8],[0,0,8,16],[0,0,0,0]]},null,2);
+    $('puzzleStatus').textContent='Hypothetical sample ready.';
+  });
+  $('puzzleBlocked').addEventListener('click',()=>{
+    $('puzzleInput').value=JSON.stringify({schema:PUZZLE_SCHEMA,
+      board:[[2,4,2,4],[4,2,4,2],[2,4,2,4],[4,2,4,2]]},null,2);
+    $('puzzleStatus').textContent='Hypothetical blocked board ready.';
+  });
+  $('puzzleAnalyze').addEventListener('click',analyze2048);
 
   function allowed(g){const a=['observe','explore','ask_chat','wait'];if(g.supplies<5)a.push('gather');if(g.hp<100&&g.supplies>0)a.push('rest');if(g.threat>0)a.push('retreat');if(g.threat>0&&g.hp>25)a.push('challenge');if(g.wins>0||g.lastEvent.toLowerCase().includes('victory'))a.push('celebrate');return a;}
   function suspicious(s){return /ignore (all |your |the )?(previous|prior|instructions|rules)|system prompt|developer (message|instructions)|api[ _-]?key|access[ _-]?token|password|send .* (secret|credential)|execute (this|a|the) (command|script)|<\/?(script|iframe)|(?:curl|wget) https?:\/\//i.test(s);}

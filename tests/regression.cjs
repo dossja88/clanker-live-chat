@@ -401,5 +401,81 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.equal(recovery.calls.length,0);
   console.log('PASS legacy fractional backup and control-character zone remain usable');
 
+
+  // 2048 board-specific preview: validate slide mechanics, no game controls.
+  const puzzle=boot(),$p=puzzle.get,starting=puzzle.localStorage.getItem('clanker.brain.v1');
+  function board(v){return JSON.stringify({schema:'clanker.2048.board.v1',board:v});}
+  const zeros=()=>Array.from({length:4},()=>[0,0,0,0]);
+  await $p('puzzleSample').fire('click');
+  await $p('puzzleAnalyze').fire('click');
+  let report=JSON.parse($p('puzzleOutput').textContent);
+  assert.equal(report.execution,'NONE');
+  assert.match(report.authorization,/NOT AUTHORIZED/);
+  assert.equal(report.origin,'manual_lab');
+  assert.equal($p('puzzleGrid').children.length,16);
+  assert.equal($p('turnCount').textContent,'Turn 0');
+  assert.equal(puzzle.localStorage.getItem('clanker.brain.v1'),starting);
+  assert.equal(puzzle.calls.length,0);
+  console.log('PASS 2048 sample proposes a read-only move and renders sixteen tiles');
+
+  // Three equal tiles merge once, four become two pairs; no chain merge.
+  const four=zeros();four[0]=[2,2,2,2];$p('puzzleInput').value=board(four);
+  $p('puzzleAdvice').value='left';await $p('puzzleAnalyze').fire('click');
+  report=JSON.parse($p('puzzleOutput').textContent);
+  assert.equal(report.candidate,'left');
+  assert.deepEqual(report.preview_board[0],[4,4,0,0]);
+  assert.equal(report.preview_merge_points,8);
+  const three=zeros();three[0]=[2,2,2,0];$p('puzzleInput').value=board(three);
+  await $p('puzzleAnalyze').fire('click');
+  report=JSON.parse($p('puzzleOutput').textContent);
+  assert.deepEqual(report.preview_board[0],[4,2,0,0]);
+  console.log('PASS 2048 merge-once rules and preview score');
+
+  const vertical=zeros();vertical[0][0]=4;vertical[1][0]=4;
+  $p('puzzleInput').value=board(vertical);$p('puzzleAdvice').value='up';
+  await $p('puzzleAnalyze').fire('click');
+  report=JSON.parse($p('puzzleOutput').textContent);
+  assert.equal(report.candidate,'up');
+  assert.equal(report.preview_board[0][0],8);
+  assert.equal(report.preview_merge_points,8);
+  assert.equal(report.advice_status,'considered and compatible');
+  console.log('PASS 2048 vertical merge and legal Crew advice');
+
+  await $p('puzzleBlocked').fire('click');$p('puzzleAdvice').value='left';
+  await $p('puzzleAnalyze').fire('click');
+  report=JSON.parse($p('puzzleOutput').textContent);
+  assert.equal(report.candidate,null);
+  assert.equal(report.status,'blocked');
+  assert.equal(report.legal_moves.length,0);
+  console.log('PASS 2048 blocked board never fabricates an executable move');
+
+  const onlyRight=zeros();onlyRight[0][3]=2;$p('puzzleInput').value=board(onlyRight);
+  $p('puzzleAdvice').value='right';await $p('puzzleAnalyze').fire('click');
+  report=JSON.parse($p('puzzleOutput').textContent);
+  assert.notEqual(report.candidate,'right');
+  assert.equal(report.advice_status,'rejected: illegal move');
+  console.log('PASS 2048 illegal Crew direction cannot override board');
+
+  async function rejectPuzzle(raw){
+    $p('puzzleInput').value=raw;await $p('puzzleAnalyze').fire('click');
+    assert.match($p('puzzleStatus').textContent,/Rejected board:/);
+    assert.equal($p('puzzleOutput').textContent,'No candidate move.');
+    assert.equal($p('puzzleGrid').children.length,0);
+  }
+  const valid=zeros();
+  await rejectPuzzle(JSON.stringify({schema:'clanker.2048.board.v1',board:valid,origin:'verified_game'}));
+  await rejectPuzzle(JSON.stringify({schema:'clanker.2048.board.v1',board:valid,execute:true}));
+  await rejectPuzzle(JSON.stringify({schema:'clanker.2048.board.v1',board:valid.slice(1)}));
+  const badFloat=zeros();badFloat[0][0]=2.5;await rejectPuzzle(board(badFloat));
+  const badValue=zeros();badValue[0][0]=-2;await rejectPuzzle(board(badValue));
+  const badPower=zeros();badPower[0][0]=3;await rejectPuzzle(board(badPower));
+  await rejectPuzzle('{"schema":"clanker.2048.board.v1","board":[],"__proto__":{"execute":true}}');
+  await rejectPuzzle('not json');
+  await rejectPuzzle('x'.repeat(1401));
+  assert.equal($p('turnCount').textContent,'Turn 0');
+  assert.equal(puzzle.localStorage.getItem('clanker.brain.v1'),starting);
+  assert.equal(puzzle.calls.length,0);
+  console.log('PASS 2048 source spoof, malformed tiles, injection and oversized data rejected without effects');
+
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

@@ -39,3 +39,7 @@ Use the existing `node tests/regression.cjs` offline runner (Node 20+) to verify
 A future separately specified game adapter requires: official publisher/developer terms review for the *specific game and mode*; the owner's **game-specific authorization**; minimized account/privilege access; an approved read-only observation transport; provenance/time-validity/safety checks; an explicitly scoped, separately approved action executor with emergency stop and independent audits; and device/browser feasibility. The Crew may advise, never elevate authorization. The current lab cannot itself grant or infer any of these gates.
 
 No credentials, workflows, paid service, new scopes, or CI jobs were added.
+
+## Game-specific extension: 2048 manual board preview
+
+The first optional game-specific feasibility extension uses the distinct `clanker.2048.board.v1` schema with sixteen manual tiles and a deterministic non-executing directional recommendation. It does **not** replace the generic five-field observation schema, attest gameplay provenance, or create a game actuator. See [`GAME_2048_FEASIBILITY.md`](GAME_2048_FEASIBILITY.md) for precise bounds, board-study algorithm, source licensing, hardware unknowns, and separate real-control approval requirements.
