@@ -55,3 +55,9 @@ A live Twitch response is invalidated if the selected viewer is forgotten or the
 ## Post-reply privacy and queue fairness
 
 When an owner forgets a viewer, Clanker also stops queued/current synthetic speech and clears the last saved and displayed response, which may contain viewer information even in old backups without attribution. This intentionally sacrifices only the last response for privacy; other game state and Crew records remain. Local simulator input has its own 15-entry bound and cannot evict up to six waiting live Twitch selections, and expired requests are pruned before live admission. These paths are covered by synthetic EventSub tests, not yet by a physical browser or a live third-party viewer.
+
+## Observation and intent laboratory (read-only)
+
+An expandable **Observation / Intent Lab** panel can copy bounded telemetry from the existing **simulator** or load a hypothetical example, accept a strictly validated manual JSON observation, consider a single-word Crew suggestion, and show a high-level candidate intent with reasons. The lab **never executes that candidate**, speaks it, sends it to an LLM, calls a game or API, changes the simulator, or saves the observation. Manual JSON cannot spoof a trusted game origin, and unknown signals bias the candidate toward observation. The contract, bounds, threat assumptions, security exclusions and future approval requirements are in [`docs/ADAPTER_CONTRACT.md`](docs/ADAPTER_CONTRACT.md).
+
+**More natural Crew conversation:** Chat-only scripted fallback now answers greetings, wellbeing, game/play questions, tactical advice, praise, and self-deprecating teasing without implying that Clanker is actually in a playable game. Simulator turns retain their existing scripts and action permissions. Legacy memory backup imports remain compatible.

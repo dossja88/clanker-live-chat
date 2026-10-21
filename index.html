@@ -108,6 +108,18 @@
         <div class="metric"><span>Integrity</span><span id="healthLabel">85 / 100</span></div><div class="meter"><div class="fill hp" id="hpFill"></div></div>
         <div class="metric"><span>Last observed event</span></div><div class="log-item" id="event">An unfamiliar signal is coming from the abandoned outpost.</div>
       </section>
+      <section class="panel" id="observationPanel">
+        <div class="subline"><h2>OBSERVATION / INTENT LAB</h2><span class="count">READ-ONLY · NO GAME CONTROL</span></div>
+        <p class="micro">Inspect what Clanker would need to reason about a game. These snapshots stay in this tab. Evaluating never advances the simulator, sends chat, or calls an API.</p>
+        <details class="advanced"><summary>Inspect observations and candidate actions</summary>
+          <div class="row" style="margin:12px 0"><button type="button" id="observeSimulator">Snapshot simulator</button><button type="button" id="observeExample">Load example</button></div>
+          <div class="field"><label for="observationJson">Read-only observation JSON (v1)</label><textarea id="observationJson" spellcheck="false" maxlength="2200" rows="7"></textarea></div>
+          <div class="field"><label for="observationAdvice">Optional Crew advice (advisory only)</label><input id="observationAdvice" spellcheck="false" autocomplete="off" maxlength="80" placeholder="retreat, rest, explore, observe"></div>
+          <button type="button" id="evaluateObservation" class="primary">Evaluate intent — do not execute</button>
+          <p id="observationStatus" class="micro" role="status" aria-live="polite">No observation evaluated.</p>
+          <pre id="observationOutput" class="research-result" style="white-space:pre-wrap;overflow-wrap:anywhere">Nothing evaluated.</pre>
+        </details>
+      </section>
       <section class="panel" id="livePanel">
         <div class="subline"><h2>LIVE TWITCH CHAT</h2><span class="count">REAL EVENTSUB</span></div>
         <p class="micro">Read real messages from <strong>your own Twitch channel</strong>. Clanker can answer selected messages by voice or on screen. This does not send chat messages to Twitch or start a broadcast; support reactions are opt-in.</p>
@@ -417,6 +429,85 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   }
 
   function addMemory(kind,text,importance=.8,viewer=null){const v=typeof viewer==='string'&&viewer.trim()?cap(viewer,24):null;const t=cap(text,240);if(!t)return;state.memories.push({id:Date.now()+'-'+Math.random().toString(36).slice(2,7),at:now(),kind:cap(kind,22),text:t,importance:clamp(Number(importance)||0,0,1),viewer:v});state.memories=state.memories.slice(-70);save();renderMemory();}
+
+  // Observation v1 is strictly read-only; the user input is ALWAYS manual_lab.
+  const OBS_SCHEMA='clanker.observation.v1';
+  const OBS_FIELDS=['schema','scene','health','resources','danger'];
+  function normalizeObservation(raw,origin='manual_lab'){
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Observation must be an object.');
+    const keys=Object.keys(raw);
+    if(keys.some(k=>!OBS_FIELDS.includes(k))||keys.length!==OBS_FIELDS.length)
+      throw Error('Use only schema, scene, health, resources and danger.');
+    if(raw.schema!==OBS_SCHEMA)throw Error('Unsupported observation schema.');
+    if(typeof raw.scene!=='string'||raw.scene.length<1||raw.scene.length>120||
+      /[\u0000-\u001f\u007f]/.test(raw.scene))throw Error('Scene must be short printable text.');
+    for(const [key,max] of [['health',100],['resources',5],['danger',3]])
+      if(raw[key]!==null&&(!Number.isInteger(raw[key])||raw[key]<0||raw[key]>max))
+        throw Error(key+' must be a bounded integer or null.');
+    if(origin!=='manual_lab'&&origin!=='simulator')throw Error('Unsupported observation origin.');
+    return {schema:OBS_SCHEMA,origin,scene:raw.scene,
+      health:raw.health,resources:raw.resources,danger:raw.danger};
+  }
+  function snapshotSimulator(g){
+    // Imported v1 backups may carry fractional counters or control characters in zones.
+    const scene=cap(g.zone,120).replace(/[\u0000-\u001f\u007f]/g,' ').trim()||'Unknown simulator location';
+    return normalizeObservation({schema:OBS_SCHEMA,scene,
+      health:Math.round(clamp(Number(g.hp)||0,0,100)),
+      resources:Math.round(clamp(Number(g.supplies)||0,0,5)),
+      danger:Math.round(clamp(Number(g.threat)||0,0,3))},'simulator');
+  }
+  function planObservation(obs,advice=''){
+    // Pure advisory: no adapter execution, network calls, persistence or speech.
+    const a=String(advice||'').trim().toLowerCase();
+    const requested=['retreat','rest','explore','observe','wait'].includes(a)?a:null;
+    let intent='observe',reason='Unknown conditions: gather observations before acting.';
+    if(obs.health!==null&&obs.danger!==null&&obs.health<35&&obs.danger>=1){
+      intent='retreat';reason='Low integrity and active danger favor a safer position.';
+    }else if(obs.health!==null&&obs.health<55&&obs.resources!==null&&obs.resources>0&&obs.danger!==null&&obs.danger<=1){
+      intent='rest';reason='Repairs are available while danger appears limited.';
+    }else if(obs.danger!==null&&obs.danger>=2){
+      intent='observe';reason='Threat is elevated; gather information first.';
+    }else if(obs.health!==null&&obs.health>=55&&obs.danger!==null&&obs.danger<=1){
+      if(requested==='retreat'&&obs.danger>0){
+        intent='retreat';reason='Crew retreat advice is compatible with observed risk.';
+      }else if(requested==='rest'&&obs.resources!==null&&obs.resources>0&&obs.health<100){
+        intent='rest';reason='Crew repair advice is compatible with observed resources.';
+      }else if(requested==='explore'){
+        intent='explore';reason='Crew exploration advice is compatible with observed conditions.';
+      }else{
+        intent='observe';reason='Stable conditions; check the next objective.';
+      }
+    }
+    return {candidate:intent,reason,advice:requested||'none',
+      advice_status:requested?(intent===requested?'considered and compatible':'considered, not followed'):'no recognized action requested',
+      confidence:'heuristic_only',authorization:'NOT AUTHORIZED FOR REAL GAME CONTROL',
+      execution:'NONE',observation_origin:obs.origin};
+  }
+  function evaluateObservationLab(){
+    try{
+      const raw=$('observationJson').value;
+      if(raw.length>2200)throw Error('Observation exceeds input limit.');
+      const obs=normalizeObservation(JSON.parse(raw),'manual_lab');
+      const proposal=planObservation(obs,$('observationAdvice').value);
+      $('observationOutput').textContent=JSON.stringify({observation:obs,proposal},null,2);
+      $('observationStatus').textContent='Read-only evaluation complete. No game or simulator action executed.';
+    }catch(e){
+      $('observationOutput').textContent='No candidate intent.';
+      $('observationStatus').textContent='Rejected observation: '+cap(e.message,140);
+    }
+  }
+  $('observeSimulator').addEventListener('click',()=>{
+    const {origin,...portable}=snapshotSimulator(state.game);
+    $('observationJson').value=JSON.stringify(portable,null,2);
+    $('observationStatus').textContent='Simulator snapshot copied to read-only lab; it remains a manual input here.';
+  });
+  $('observeExample').addEventListener('click',()=>{
+    $('observationJson').value=JSON.stringify({schema:OBS_SCHEMA,
+      scene:'Hypothetical damaged corridor',health:18,resources:2,danger:3},null,2);
+    $('observationStatus').textContent='Hypothetical sample loaded; not a real game observation.';
+  });
+  $('evaluateObservation').addEventListener('click',evaluateObservationLab);
+
   function allowed(g){const a=['observe','explore','ask_chat','wait'];if(g.supplies<5)a.push('gather');if(g.hp<100&&g.supplies>0)a.push('rest');if(g.threat>0)a.push('retreat');if(g.threat>0&&g.hp>25)a.push('challenge');if(g.wins>0||g.lastEvent.toLowerCase().includes('victory'))a.push('celebrate');return a;}
   function suspicious(s){return /ignore (all |your |the )?(previous|prior|instructions|rules)|system prompt|developer (message|instructions)|api[ _-]?key|access[ _-]?token|password|send .* (secret|credential)|execute (this|a|the) (command|script)|<\/?(script|iframe)|(?:curl|wget) https?:\/\//i.test(s);}
   function cleanChat(){const t=Date.now();state.chats=state.chats.filter(x=>x.expires>t&&!x.blocked);}
@@ -433,6 +524,35 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     else if(g.turns%4===2){action='observe';say='I wonder whether humans experience this much doubt before opening a door. Statistically, perhaps they should.';}
     else if(g.turns%4===1&&available.includes('gather')){action='gather';say='Acquiring supplies. A complex economic operation otherwise known as picking things up.';}
     return {say,intent:{action,target:null},mood,chat_target:chat?.viewer||null,memory_candidate:{summary:null,importance:0},clip_candidate:clip};}
+
+  function pickChatOnlyOffline(chat){
+    const who=chat?.viewer||'Crew',text=String(chat?.message||'');
+    let say,mood='curious';
+    if(/\b(?:play|playing|beat|defeat|gameplay|streaming|game)\b/i.test(text)){
+      say=`${who}, the game controls are not connected yet. I can inspect plans, not pretend I conquered a world. Confidence remains extremely available.`;
+      mood='thoughtful';
+    }else if(/\b(?:how are you|you ok|doing alright|feeling|status)\b/i.test(text)){
+      say=`${who}, I am curious, lightly dented, and operational. How is The Crew holding together?`;
+      mood='happy';
+    }else if(/\b(?:hello|hi|hey|good morning|welcome)\b/i.test(text)){
+      say=`${who}! Greetings from the experimental corner of robot history. Have you brought advice, or excellent timing?`;
+      mood='happy';
+    }else if(/\b(?:retreat|attack|fight|run away|explore|heal|rest|boss)\b/i.test(text)){
+      say=`${who}, tactical suggestion received. I will weigh it when an approved game exists to weigh it in. No buttons are being pressed.`;
+      mood='thoughtful';
+    }else if(/\b(?:nice|great|love|good job|well done|awesome)\b/i.test(text)){
+      say=`${who}, praise detected. Evidence that humans occasionally make excellent decisions.`;
+      mood='happy';
+    }else if(/\b(?:bad|noob|skill issue|trash|clumsy)\b/i.test(text)){
+      say=`${who}, harsh but statistically defensible. My gaming competency is still unverified.`;
+      mood='deadpan';
+    }else{
+      say=`${who}, that is going onto The Crew's advisory board. Its members are me, plus an antenna with strong opinions.`;
+      mood='amused';
+    }
+    return {say,intent:{action:'ask_chat',target:null},mood,chat_target:chat?.viewer||null,
+      memory_candidate:{summary:null,importance:0},clip_candidate:false};
+  }
   async function researchGame(game,automatic=false){
     const title=cleanGameTitle(game);if(!title)throw Error('Enter a recognizable game title.');
     const cacheKey=gameKey(title),cached=researchCache.get(cacheKey);
@@ -562,6 +682,8 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     const liveReply=chat?.source==='twitch'?{viewer:chat.viewer,viewerId:chat.viewerId,cancelled:false}:null;
     if(liveReply)activeLiveReply=liveReply;
     const observation=clone(state.game);
+    // Construct a validated internal snapshot without granting it execution privileges.
+    snapshotSimulator(observation);
     const available=chatOnly?['observe','ask_chat','wait']:allowed(observation);
     let d,mode='offline',lookup=null;
     if(chat&&$('autoResearch').checked&&$('provider').value==='gemini'){
@@ -572,20 +694,20 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     if(chat&&!lookup){const title=suggestedGame(chat.message);if(title){const c=researchCache.get(gameKey(title));if(c&&Date.now()-c.at<RESEARCH_CACHE_MS)lookup=c;}}
     try{
       if(liveReply?.cancelled){
-        d=safeDecision(pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
+        d=safeDecision(chatOnly?pickChatOnlyOffline(chat):pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
       }else if($('provider').value==='gemini'){
         mode='gemini';$('status').textContent='THINKING VIA GEMINI';
         const raw=await askGemini(observation,available,chat,chatOnly,lookup);
         d=safeDecision(raw,available,chat?[chat.viewer]:[]);
         if(d.invalidIntent)note('guardrail','Model proposed an unavailable action; substituted observe.');
-      }else d=safeDecision(pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
+      }else d=safeDecision(chatOnly?pickChatOnlyOffline(chat):pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
     }catch(e){
       // A failed late model request may echo input in its error: don't re-log a forgotten viewer.
       if(!liveReply?.cancelled){
         note('fallback',cap(e.message||'Model failed',200));
         $('brainMessage').textContent=`Gemini unavailable; scripted fallback used. ${cap(e.message||'',110)}`;
       }
-      mode='fallback';d=safeDecision(pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
+      mode='fallback';d=safeDecision(chatOnly?pickChatOnlyOffline(chat):pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
     }
     try{
       // Policy-related statements are produced from owner review status, not from web instructions.

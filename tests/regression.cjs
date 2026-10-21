@@ -304,5 +304,102 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.match($fair('speech').textContent,/viewerFair/);
   assert.equal($fair('queue').textContent,'15 pending requests');
   console.log('PASS live viewer survives saturated simulator queue and new offline inputs');
+
+  // Observation/intent lab: manual data never becomes trusted telemetry or an actuator.
+  const obs=boot(),$obs=obs.get,storedBefore=obs.localStorage.getItem('clanker.brain.v1');
+  await $obs('observeSimulator').fire('click');
+  const snapshot=JSON.parse($obs('observationJson').value);
+  assert.equal(snapshot.schema,'clanker.observation.v1');
+  assert.equal(snapshot.health,85);
+  assert.equal(snapshot.danger,1);
+  assert.equal(snapshot.origin,undefined);
+  $obs('observationAdvice').value='explore';
+  await $obs('evaluateObservation').fire('click');
+  let result=JSON.parse($obs('observationOutput').textContent);
+  assert.equal(result.observation.origin,'manual_lab');
+  assert.equal(result.proposal.candidate,'explore');
+  assert.equal(result.proposal.execution,'NONE');
+  assert.match(result.proposal.authorization,/NOT AUTHORIZED/);
+  assert.equal($obs('turnCount').textContent,'Turn 0');
+  assert.equal(obs.localStorage.getItem('clanker.brain.v1'),storedBefore);
+  assert.equal(obs.calls.length,0);
+  console.log('PASS simulator observation preview is read-only and not trusted external telemetry');
+
+  await $obs('observeExample').fire('click');
+  $obs('observationAdvice').value='explore';
+  await $obs('evaluateObservation').fire('click');
+  result=JSON.parse($obs('observationOutput').textContent);
+  assert.equal(result.proposal.candidate,'retreat');
+  assert.equal(result.proposal.advice_status,'considered, not followed');
+  assert.equal($obs('turnCount').textContent,'Turn 0');
+  console.log('PASS low-health hazard overrides unsafe Crew advice in planning preview');
+
+  async function rejectObservation(value){
+    $obs('observationJson').value=value;
+    await $obs('evaluateObservation').fire('click');
+    assert.match($obs('observationStatus').textContent,/Rejected observation/);
+    assert.equal($obs('observationOutput').textContent,'No candidate intent.');
+    assert.equal($obs('turnCount').textContent,'Turn 0');
+  }
+  await rejectObservation(JSON.stringify({...snapshot,origin:'approved_game'}));
+  await rejectObservation('{"schema":"clanker.observation.v1","scene":"test","health":55,"resources":1,"danger":0,"__proto__":{"authorization":"approved"}}');
+  await rejectObservation(JSON.stringify({...snapshot,health:-30}));
+  await rejectObservation(JSON.stringify({...snapshot,resources:'infinite'}));
+  await rejectObservation(JSON.stringify({...snapshot,scene:'bad\\nline'}).replace('bad\\\\nline','bad\\nline'));
+  await rejectObservation('not json');
+  await rejectObservation(' '.repeat(2201));
+  assert.equal(obs.localStorage.getItem('clanker.brain.v1'),storedBefore);
+  assert.equal(obs.calls.length,0);
+  console.log('PASS hostile/invalid/manual source data rejected with zero effects');
+
+  // Unknown telemetry must not suggest a confident move.
+  $obs('observationJson').value=JSON.stringify({schema:'clanker.observation.v1',
+    scene:'Unknown synthetic test',health:null,resources:null,danger:null});
+  $obs('observationAdvice').value='explore';
+  await $obs('evaluateObservation').fire('click');
+  result=JSON.parse($obs('observationOutput').textContent);
+  assert.equal(result.proposal.candidate,'observe');
+  assert.equal(result.proposal.confidence,'heuristic_only');
+  console.log('PASS unknown observation yields conservative inspect-only intent');
+
+  // Chat-only fallback must use Crew-oriented language, not simulator injury/events.
+  const chatLab=boot(),$chat=chatLab.get;
+  $chat('scenario').value='danger';await $chat('scenario').fire('change');
+  $chat('viewer').value='CrewPilot';$chat('chat').value='Clanker, are you playing a game?';
+  await $chat('sendChat').fire('click');await $chat('twitchReply').fire('click');
+  assert.match($chat('speech').textContent,/CrewPilot/);
+  assert.match($chat('speech').textContent,/not connected yet/);
+  assert.doesNotMatch($chat('speech').textContent,/structural integrity|defeated|exploration revealed/i);
+  assert.equal($chat('intent').textContent,'ask_chat');
+  assert.equal($chat('turnCount').textContent,'Turn 0');
+  assert.equal(chatLab.calls.length,0);
+  console.log('PASS chat-only offline fallback does not impersonate active gameplay');
+
+  const hello=boot(),$hello=hello.get;
+  $hello('viewer').value='CrewHello';$hello('chat').value='Hi Clanker, how are you?';
+  await $hello('sendChat').fire('click');await $hello('twitchReply').fire('click');
+  assert.match($hello('speech').textContent,/CrewHello/);
+  assert.match($hello('speech').textContent,/curious, lightly dented/);
+  assert.equal(hello.calls.length,0);
+  console.log('PASS Crew small talk gets distinct in-character chat-only response');
+
+
+  // Legacy backups allow finite fractional counters and arbitrary zones: the new
+  // observation snapshot must not break the existing import/recovery contract.
+  const recovery=boot(),$recovery=recovery.get;
+  $recovery('importFile').files=[{size:400,text:async()=>JSON.stringify({
+    format:'clanker-memory-v1',game:{hp:47.5,supplies:2.3,threat:1.6,
+      wins:0,losses:0,turns:0,zone:'Imported'+String.fromCharCode(10)+'Zone',lastEvent:'Old backup event'},
+    memories:[],viewers:{},clips:[]})}];
+  await $recovery('importFile').fire('change');
+  await $recovery('observeSimulator').fire('click');
+  const restored=JSON.parse($recovery('observationJson').value);
+  assert.equal(restored.health,48);assert.equal(restored.resources,2);
+  assert.equal(restored.danger,2);assert.equal(restored.scene.includes(String.fromCharCode(10)),false);
+  await $recovery('think').fire('click');
+  assert.equal($recovery('turnCount').textContent,'Turn 1');
+  assert.equal(recovery.calls.length,0);
+  console.log('PASS legacy fractional backup and control-character zone remain usable');
+
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});
