@@ -33,7 +33,7 @@ class Element{
   getBoundingClientRect(){return {width:220,height:220,left:0,top:0};}
 }
 function storage(){const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,String(v)),removeItem:k=>m.delete(k),clear:()=>m.clear()};}
-function boot(network=false){
+function boot(network=false,forgetName=null){
   const elements=new Map(ids.map(id=>[id,new Element(id)]));
   const get=id=>{if(!elements.has(id))elements.set(id,new Element(id));return elements.get(id);};
   const document={getElementById:get,createElement:t=>new Element('',t),createElementNS:(_,t)=>new Element('',t),
@@ -73,9 +73,9 @@ function boot(network=false){
     history:{replaceState(){}},setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},
     requestAnimationFrame:f=>f(),speechSynthesis:{cancel(){},speak(){}},
     SpeechSynthesisUtterance:class{},Blob:class{},URL,TextEncoder,TextDecoder,
-    alert(){},confirm:()=>false,prompt:()=>null,console};
+    alert(){},confirm:()=>false,prompt:()=>forgetName,console};
   vm.runInNewContext(script,context,{timeout:2500,filename:'index.html:inline'});
-  return {get,calls,sockets};
+  return {get,calls,sockets,localStorage:context.localStorage};
 }
 async function scenario(name,action){
   const b=boot();await action(b.get);
@@ -185,5 +185,22 @@ function chatEvent(id,who,text,channel='broadcaster'){
   await $d('twitchReply').fire('click');
   assert.match($d('brainMessage').textContent,/No selected viewer message/);
   console.log('PASS disconnect clears queued real Twitch messages');
+
+  const f=boot(true,'viewerForget'),$f=f.get;
+  $f('twitchClient').value='clankerclient12345';$f('twitchToken').value='fake-local-token';
+  await $f('twitchManual').fire('click');
+  for(let i=0;i<12&&!f.sockets.length;i++)await Promise.resolve();
+  await f.sockets[0].deliver({metadata:{message_type:'session_welcome'},
+    payload:{session:{id:'fake-forget-session',keepalive_timeout_seconds:30}}});
+  await f.sockets[0].deliver(chatEvent('forget1','viewerForget','Clanker, please remember me'));
+  assert.equal($f('queue').textContent,'1 pending requests');
+  assert.match(f.localStorage.getItem('clanker.brain.v1'),/viewerForget/);
+  await $f('twitchForget').fire('click');
+  assert.equal($f('queue').textContent,'0 pending requests');
+  const saved=f.localStorage.getItem('clanker.brain.v1');
+  assert.doesNotMatch(saved,/viewerForget|forget1/);
+  assert.doesNotMatch(JSON.stringify($f('twitchLog').children),/viewerForget/);
+  console.log('PASS forget viewer removes queue, recent display and stored metadata without re-logging handle');
+
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

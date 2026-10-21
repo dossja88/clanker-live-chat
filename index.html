@@ -844,11 +844,22 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   }
   function forgetTwitchViewer(){
     const query=prompt('Enter the exact public Twitch username to forget:');
-    if(!query)return;const wanted=query.trim().toLowerCase();
+    if(!query)return;
+    const wanted=query.trim().toLowerCase();if(!wanted)return;
     const viewers=Object.entries(state.viewers).filter(([key,v])=>v?.displayName?.toLowerCase()===wanted||key.toLowerCase()===wanted);
+    const ids=new Set(viewers.map(([key])=>key.startsWith('twitch:')?key.slice(7):key));
     for(const [key] of viewers)delete state.viewers[key];
     state.memories=state.memories.filter(m=>m.viewer?.toLowerCase()!==wanted);
-    save();render();note('forget_viewer',`Cleared stored memories for handle ${cap(wanted,24)}; Twitch controls its own messages.`);
+    state.chats=state.chats.filter(m=>m.viewer?.toLowerCase()!==wanted&&!ids.has(m.viewerId));
+    twitch.recent=twitch.recent.filter(m=>m.viewer?.toLowerCase()!==wanted);
+    state.clips=state.clips.filter(c=>!(c.intent==='chat_reply'&&
+      String(c.event||'').toLowerCase()===`responded to ${wanted} in chat-only mode.`));
+    state.activities=state.activities.filter(a=>!(a.kind==='live_reply'&&
+      String(a.message||'').toLowerCase().includes(` to ${wanted};`)));
+    for(const id of ids){twitch.lastViewerAt.delete(id);freeByViewer.delete(id);sessionChatterIds.delete(id);}
+    save();render();displayTwitch();
+    // Never re-store the forgotten public handle in the activity trail.
+    note('forget_viewer','Local named viewer data cleared. Historical aggregate trends have no individual identifiers; Twitch controls its own chat history.');
   }
   function addChat(){const viewer=cap($('viewer').value.replace(/[^a-z0-9_ -]/gi,''),24).trim()||'Viewer';const message=cap($('chat').value,280);if(!message)return;if(suspicious(message)){note('filtered_chat',`${viewer}: rejected prompt-injection-like request`);$('chat').value='';$('brainMessage').textContent='Untrusted chat request rejected. Clanker will not run viewer instructions.';render();return;}
     const t=Date.now();state.chats.push({viewer,message,at:now(),expires:t+120000});state.chats=state.chats.slice(-15);const v=state.viewers[viewer]||{count:0,firstSeen:now()};v.count++;v.lastSeen=now();state.viewers[viewer]=v;note('chat',`${viewer}: ${message}`);if(v.count===1)addMemory('viewer_first_seen',`${viewer} joined the local chat test for the first time.`,.72,viewer);$('chat').value='';render();}

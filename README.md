@@ -43,3 +43,7 @@ Target practical automation with **$0 added recurring operating cost**. Billing 
 ## Live/offline queue isolation (2026-10-20)
 
 The read-only Twitch response queue is now separated from the simulated game chat queue. While Twitch is connected, **Reply to next selected message** uses only an eligible real Twitch message; normal simulator turns consume only offline requests. Disconnecting or losing the Twitch socket drops pending live viewer requests but preserves unrelated simulator input, avoiding accidental simulator actions and stale replies. The existing dependency-free regression runner now covers mixed-source queues and disconnection with mock EventSub traffic. These synthetic checks do **not** establish a new real Twitch response test.
+
+## Local viewer-forget scope
+
+The **Forget viewer** control (exact public username, owner initiated) clears a matched Twitch handle from the current live message list and reply queue, per-viewer memory/profile, on-device session rate-limit maps, and matching generated response labels/clip candidates. Its success diagnostic never repeats the forgotten handle. It does **not** delete Twitch-hosted messages or undo anonymous historical aggregate trend counts, which have no individual identifiers to target. The regression suite includes a synthetic live-message forget/privacy check. No additional OAuth scopes are needed.
