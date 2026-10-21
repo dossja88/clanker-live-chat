@@ -19,6 +19,12 @@ This GitHub repository is **public** as verified on 2026-10-20. Never commit acc
 - Twitch **receive-only** EventSub WebSocket / OAuth implementation is present in source. After onboarding the `ClankerLiveAI` account and `ClankerAI` developer application, the owner reported a **PASS** for real broadcaster-authored chat delivery through the opt-in self-test on 2026-10-20. This is an owner-observed browser test, not independent capture of Twitch API data or validation of normal third-party viewer chat. Clanker does not post messages to Twitch, broadcast or control a real game.
 - The “autonomous” browser loop only advances the simulator while the page remains active. It is not unattended game control, a persistent live streamer or an approved game adapter.
 
+## Reproducible safety and behavior tests
+
+Run `node tests/regression.cjs` from the repository root using Node.js 20+ (no `npm install`, environment variables, credentials, network, or third-party packages). The script reads `index.html` and executes its real inline JavaScript with a **synthetic browser DOM**, then runs the built-in safety checks, five offline Crew/dialogue cases, and mocked Twitch EventSub WebSocket and manual-reply paths. An uncaught failure exits nonzero. The tool does **not** prove physical voice playback, real Twitch viewer delivery, browser geometry, Gemini output, real game control, or GitHub Pages deployment.
+
+**Safety:** The fake Twitch token and IDs exist only inside the test process; outbound network calls are blocked/explicitly mocked. It never posts to Twitch or stores user data. It does not add a recurring job or CI infrastructure.
+
 ## Safe local review
 
 1. Open the Pages URL on Android or Xbox browser; confirm the displayed version and expression controls. The owner's Xbox Edge visual review of v2.5 was favorable; Android Brave v2.5 remains untested separately.

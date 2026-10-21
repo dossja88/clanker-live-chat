@@ -35,6 +35,11 @@ These are project-specific instructions; they supplement, never replace, the use
 
 ## Development and verification rules
 
+- For routine source changes, use the repository's zero-dependency `node tests/regression.cjs` runner first. Require the built-in checks and simulated chat/OAuth/EventSub paths to pass. Distinguish execution in real Node.js from a connector-isolate JavaScript shim, and do not claim a live browser or Twitch validation unless actually performed. The runner is *manual CLI*, not installed CI.
+- **Standing owner decision (2026-10-20):** Routine reversible, safely scoped GitHub development and documentation work is preauthorized. Exercise bounded creative discretion, implement/test/commit directly, and ask only for genuine gates or meaningful owner review. Existing permissions, billing-disabled, private data, stream/publication, game-control and cost boundaries remain in force. Never translate this into unlimited changes or non-GitHub external actions.
+
+
+
 - Read `index.html` and current related code first; it is the single-file application. Preserve offline fallback, Gemini isolation, voice, avatar geometry, accessibility, browser/mobile support, Twitch filtering, local storage and recovery.
 - Use narrow diffs, compile/parse checks, DOM-reference checks, existing in-app assertions, adversarial input checks, browser layout/voice tests, security review, and regression checks as relevant. Document precisely what ran, where, with dates and exclusions. Test GitHub Pages vs branch separately; a commit alone does not establish live deployment.
 - For browser TTS, voice pitch/rate do not guarantee identical voice across Xbox Edge/Android Brave. Do not claim seamless synchronization. Prefer tested user-selectable voice selection later if needed.
