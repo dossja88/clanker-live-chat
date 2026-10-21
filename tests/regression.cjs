@@ -5,6 +5,20 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const html=fs.readFileSync(path.resolve(__dirname,'..','index.html'),'utf8');
+const stageHtml=fs.readFileSync(path.resolve(__dirname,'..','stage.html'),'utf8');
+const stageMatch=stageHtml.match(/<script>([\s\S]*?)<\/script>/);
+assert.ok(stageMatch,'Clean stage should have exactly one inline renderer script');
+new vm.Script(stageMatch[1],{filename:'stage.html:inline'});
+assert.match(stageHtml,/clanker-sprite/);
+assert.match(stageHtml,/clanker\.stage\.state\.v1/);
+assert.doesNotMatch(stageHtml,/id="(?:key|twitchToken|twitchClient)"/);
+assert.doesNotMatch(stageMatch[1],/\b(?:fetch|WebSocket|localStorage|sessionStorage|speechSynthesis)\b/);
+const mainAsset=html.match(/data:image\/webp;base64,([A-Za-z0-9+/=]+)/);
+const stageAsset=stageHtml.match(/data:image\/webp;base64,([A-Za-z0-9+/=]+)/);
+assert.ok(mainAsset&&stageAsset);
+assert.equal(stageAsset[1],mainAsset[1],'Stage must reuse the exact original portrait asset');
+console.log('PASS clean stage JS parses, excludes credential inputs and preserves original portrait');
+
 const match=html.match(/<script>([\s\S]*?)<\/script>/);
 assert.ok(match,'Expected one inline application script');
 const script=match[1], ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
@@ -42,7 +56,7 @@ class Element{
   getBoundingClientRect(){return {width:220,height:220,left:0,top:0};}
 }
 function storage(){const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,String(v)),removeItem:k=>m.delete(k),clear:()=>m.clear()};}
-function boot(network=false,forgetName=null,geminiResponder=null,puzzleSeed=null,clockAt=null){
+function boot(network=false,forgetName=null,geminiResponder=null,puzzleSeed=null,clockAt=null,stageConnected=false){
   const elements=new Map(ids.map(id=>[id,new Element(id)]));
   const get=id=>{if(!elements.has(id))elements.set(id,new Element(id));return elements.get(id);};
   const documentEvents={};
@@ -52,7 +66,12 @@ function boot(network=false,forgetName=null,geminiResponder=null,puzzleSeed=null
     hidden:false,body:new Element('body')};
   for(const [k,v] of Object.entries({provider:'offline',scenario:'outpost',twitchPolicy:'addressed',
     twitchVoicePolicy:'manual',policyVerdict:'unknown',avatarPreview:'auto',analyticsScope:'on'}))get(k).value=v;
-  const calls=[],sockets=[],intervals=new Map(),downloads=[];let nextTimerId=10;
+  const calls=[],sockets=[],intervals=new Map(),downloads=[],channels=[];let nextTimerId=10;
+  class FakeChannel{
+    constructor(name){this.name=name;this.posts=[];channels.push(this);}
+    postMessage(message){this.posts.push(message);}
+    close(){}
+  }
   let clockValue=clockAt;
   const TestDate=class extends Date{
     constructor(...args){super(...(args.length?args:clockValue===null?[]:[clockValue]));}
@@ -95,7 +114,9 @@ function boot(network=false,forgetName=null,geminiResponder=null,puzzleSeed=null
   }
   const location={protocol:'https:',hostname:'dossja88.github.io',
     pathname:'/clanker-live-chat/',origin:'https://dossja88.github.io',hash:'',search:''};
-  const context={document,window:{location,crypto:{getRandomValues:a=>a.fill(123456)},addEventListener(){}},
+  const browserWindow={location,crypto:{getRandomValues:a=>a.fill(123456)},addEventListener(){}};
+  if(stageConnected)browserWindow.BroadcastChannel=FakeChannel;
+  const context={document,window:browserWindow,BroadcastChannel:FakeChannel,
     location,localStorage:storage(),sessionStorage:storage(),fetch:fetchMock,WebSocket:Socket,
     crypto:{getRandomValues:a=>a.fill(123456)},navigator:{clipboard:{writeText:async()=>{}}},
     history:{replaceState(){}},setTimeout:()=>1,clearTimeout(){},
@@ -107,7 +128,7 @@ function boot(network=false,forgetName=null,geminiResponder=null,puzzleSeed=null
     AbortController:class{constructor(){this.signal={aborted:false}}abort(){this.signal.aborted=true}},
     alert(){},confirm:()=>false,prompt:()=>forgetName,console};
   vm.runInNewContext(script,context,{timeout:2500,filename:'index.html:inline'});
-  return {get,calls,sockets,localStorage:context.localStorage,downloads,
+  return {get,calls,sockets,channels,localStorage:context.localStorage,downloads,
     body:document.body,
     fireDocumentEvent:async(type,data={})=>{for(const handler of documentEvents[type]||[])
       await handler(data);},
@@ -855,6 +876,69 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.match($probe('play2048DeviceStatus').textContent,/skipped/);
   browserProbe.setHidden(false);
   console.log('PASS browser device check times pure moves without changing game, storage or network');
+
+
+  // In the real control app, the clean stage can only request sanitized stageSnapshots.
+  const source=boot(false,null,null,5,null,true),$src=source.get;
+  const stageBus=source.channels.find(c=>c.name==='clanker.stage.v1');
+  assert.ok(stageBus,'Missing dedicated stage channel in source');
+  assert.ok(source.channels.some(c=>c.name==='clanker.avatar.v1'));
+  assert.equal(stageBus.posts.at(-1).phase,'not_started');
+  assert.equal(stageBus.posts.at(-1).board,null);
+  await $src('play2048New').fire('click');
+  await $src('play2048Step').fire('click');
+  const stageSnapshot=stageBus.posts.at(-1);
+  assert.equal(stageSnapshot.type,'clanker.stage.state.v1');
+  assert.equal(stageSnapshot.origin,'local2048');
+  assert.equal(stageSnapshot.turns,1);
+  assert.equal(stageSnapshot.board.flat().length,16);
+  assert.ok(['idle','happy','smug','confused','surprised','panic','deadpan','glitch','talking'].includes(stageSnapshot.face));
+  assert.doesNotMatch(JSON.stringify(stageSnapshot),/fake-local-token|twitchClient|viewer|key|chatter|gemini/i);
+  const posted=stageBus.posts.length;
+  stageBus.onmessage({data:{type:'move',direction:'left',isAdmin:true}});
+  stageBus.onmessage({data:{type:'clanker.stage.request.v1',version:2}});
+  assert.equal(stageBus.posts.length,posted);
+  assert.equal($src('play2048Turns').textContent,'1');
+  stageBus.onmessage({data:{type:'clanker.stage.request.v1',version:1}});
+  assert.equal(stageBus.posts.length,posted+1);
+  assert.equal($src('play2048Turns').textContent,'1');
+  assert.equal(source.calls.length,0);
+  console.log('PASS local stage source emits whitelisted stageSnapshots; inbound stage requests cannot act');
+
+  // In an independent stage tab, only strict, bounded payloads become text nodes.
+  const stageEls=new Map();
+  const stageGet=id=>{if(!stageEls.has(id))stageEls.set(id,new Element(id));return stageEls.get(id);};
+  const stageIntervals=[];
+  const stageChannels=[];
+  class ReceiverChannel{
+    constructor(name){assert.equal(name,'clanker.stage.v1');this.posts=[];stageChannels.push(this);}
+    postMessage(m){this.posts.push(m);}
+    close(){}
+  }
+  const stageDocument={getElementById:stageGet,
+    createElement:t=>new Element('',t)};
+  const receiverContext={document:stageDocument,window:{BroadcastChannel:ReceiverChannel,
+    addEventListener(){}},BroadcastChannel:ReceiverChannel,
+    setInterval:fn=>{stageIntervals.push(fn);return stageIntervals.length;},Date,console};
+  vm.runInNewContext(stageMatch[1],receiverContext,{timeout:2500,filename:'stage.html:inline'});
+  assert.equal(stageChannels.length,1);
+  assert.equal(stageChannels[0].posts[0].type,'clanker.stage.request.v1');
+  stageChannels[0].onmessage({data:stageSnapshot});
+  assert.equal(stageGet('board').children.length,16);
+  assert.equal(stageGet('turns').textContent,'1');
+  assert.equal(stageGet('score').textContent,String(stageSnapshot.score));
+  assert.equal(stageGet('commentary').textContent,stageSnapshot.commentary);
+  assert.match(stageGet('connection').textContent,/Live same-browser/);
+  const goodBoard=stageGet('board').children.map(x=>x.textContent).join(',');
+  const malicious={...stageSnapshot,board:[1,2,3,4],commentary:'<script>injected</script>'};
+  stageChannels[0].onmessage({data:malicious});
+  assert.equal(stageGet('board').children.map(x=>x.textContent).join(','),goodBoard);
+  assert.equal(stageGet('commentary').textContent,stageSnapshot.commentary);
+  stageChannels[0].onmessage({data:{...stageSnapshot,turns:100001}});
+  assert.equal(stageGet('turns').textContent,'1');
+  assert.equal(stageChannels[0].posts.length,1);
+  assert.equal(stageIntervals.length,1);
+  console.log('PASS isolated clean stage validates payloads, uses text rendering and has no control path');
 
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

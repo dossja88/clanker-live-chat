@@ -172,6 +172,7 @@
         <div class="subline"><h2>CLANKER PLAYS 2048</h2><span class="count">SELF-CONTAINED BROWSER GAME</span></div>
         <div class="row" style="margin-bottom:10px">
           <button type="button" id="play2048Stage" aria-pressed="false">Performance view</button>
+          <a href="./stage.html" target="_blank" rel="noopener noreferrer" class="button" id="play2048CleanStage" style="display:inline-flex;align-items:center;text-decoration:none">Open read-only clean stage ↗</a>
           <button type="button" id="play2048DeviceCheck">Check this browser</button>
           <span class="micro" id="play2048StageStatus" role="status">Standard lab view. Performance mode never starts a stream.</span>
         </div>
@@ -694,6 +695,25 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   let local2048History=[],local2048ReplayIndex=-1,local2048HistoryTruncated=false,local2048SessionAt=null;
   const LOCAL2048_HISTORY_LIMIT=513; // oldest frames can roll off; export says when truncated
   const LOCAL2048_INTERVAL_MS=1500,LOCAL2048_STEP_LIMIT=128;
+  // Dedicated stage receives only whitelisted board/mood metadata.
+  // No Twitch tokens, API keys, viewer identities, raw chat, or stored memories.
+  let stageBus=null;
+  try{if('BroadcastChannel' in window)stageBus=new BroadcastChannel('clanker.stage.v1');}catch(e){}
+  function emitStageSnapshot(){
+    if(!stageBus)return;
+    try{
+      const board=local2048?local2048.board.map(row=>row.slice()):null;
+      stageBus.postMessage({type:'clanker.stage.state.v1',version:1,at:Date.now(),
+        origin:'local2048',board,score:local2048?.score??0,turns:local2048?.turns??0,
+        phase:local2048?.status||'not_started',running:local2048Timer!==null,
+        face:avatarFace(),speaking:!!avatarSpeaking,
+        commentary:local2048?$('play2048Commentary').textContent.slice(0,220):'Clanker is ready for a new local puzzle.'});
+    }catch(e){}
+  }
+  if(stageBus)stageBus.onmessage=e=>{
+    if(e.data?.type==='clanker.stage.request.v1'&&e.data?.version===1)
+      emitStageSnapshot(); // request carries no commands; reply has no secrets
+  };
   const LIVE2048_ADVICE_TTL_MS=120000,LIVE2048_VOTE_LIMIT=6;
   let live2048Votes=[];
   function pruneLive2048Votes(){
@@ -747,6 +767,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     local2048Remaining=0;$('play2048Start').disabled=false;$('play2048Budget').disabled=false;
     clearLive2048Votes();
     $('play2048Status').textContent=reason;
+    emitStageSnapshot();
   }
   function empty2048Spaces(board){
     const spaces=[];for(let r=0;r<4;r++)for(let c=0;c<4;c++)if(board[r][c]===0)spaces.push([r,c]);
@@ -848,6 +869,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       highest_tile:Math.max(...board.flat()),open_spaces:empty2048Spaces(board).length});
     renderLocal2048();
     $('play2048Commentary').textContent='Clanker: “Two tiles! This is the largest strategic responsibility I have ever accepted.”';
+    emitStageSnapshot();
   }
   // Empirically compared against the previous heuristic on separate seeded batches.
   // This values high tiles ordered along a corner-origin snake, but does not lock any direction.
@@ -939,6 +961,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       'Owner moved '+direction.toUpperCase()+'. Real score '+local2048.score+
       ', highest tile '+max+'.';
     if(source==='Clanker')narrateLocal2048(event);
+    emitStageSnapshot();
     return true;
   }
   function stepLocal2048(){
@@ -1197,6 +1220,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     $('avatar').setAttribute('aria-label','Clanker '+(FACE_ARIA[face]||FACE_ARIA.idle));
     $('avatarStatus').textContent='Face: '+face+(avatarSpeaking?' · speaking':' · silent')+(face==='idle'?' · mouth hidden':'');
     if(avatarBus){try{avatarBus.postMessage({type:'clanker.face',version:1,face,speaking:avatarSpeaking,at:Date.now()});}catch(e){}}
+    emitStageSnapshot();
   }
   function setAvatarMood(mood){avatarMood=String(mood||'curious').slice(0,32);updateAvatar();}
   function setAvatarSpeaking(speaking){avatarSpeaking=!!speaking;updateAvatar();}
