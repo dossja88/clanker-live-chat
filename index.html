@@ -259,6 +259,8 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const defaultStore=()=>({game:clone(preset.outpost),memories:[],viewers:{},clips:[],activities:[],chats:[],last:{say:'Systems online. Gaming competency: unverified. Human supervision: unfortunately present.',intent:'observe',mood:'curious'}});
   let state=defaultStore(), busy=false, autoTimer=null, voiceEnabled=false, speakingToken=0, speechQueue=[], activeSpeech=false;
+  // Do not publish an in-flight reply after its viewer is forgotten or the connection dies.
+  let activeLiveReply=null;
   const RESEARCH_MODEL='gemini-2.5-flash-lite', RESEARCH_CACHE_MS=86400000, RESEARCH_THROTTLE_MS=120000, POLICY_KEY='clanker.policy.reviews.v1';
   const researchCache=new Map();let lastSearchAt=0, researchBusy=false, latestResearch=null, reviewedPolicies={};
   try{const obj=JSON.parse(localStorage.getItem(POLICY_KEY)||'{}');if(obj&&typeof obj==='object'&&!Array.isArray(obj))reviewedPolicies=obj;}catch(e){}
@@ -557,6 +559,8 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     }
     busy=true;$('think').disabled=true;$('twitchReply').disabled=true;
     const chat=chatIndex>=0?state.chats.splice(chatIndex,1)[0]:null;
+    const liveReply=chat?.source==='twitch'?{viewer:chat.viewer,viewerId:chat.viewerId,cancelled:false}:null;
+    if(liveReply)activeLiveReply=liveReply;
     const observation=clone(state.game);
     const available=chatOnly?['observe','ask_chat','wait']:allowed(observation);
     let d,mode='offline',lookup=null;
@@ -567,21 +571,30 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     // A previously searched game can inform a response without another network request.
     if(chat&&!lookup){const title=suggestedGame(chat.message);if(title){const c=researchCache.get(gameKey(title));if(c&&Date.now()-c.at<RESEARCH_CACHE_MS)lookup=c;}}
     try{
-      if($('provider').value==='gemini'){
+      if(liveReply?.cancelled){
+        d=safeDecision(pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
+      }else if($('provider').value==='gemini'){
         mode='gemini';$('status').textContent='THINKING VIA GEMINI';
         const raw=await askGemini(observation,available,chat,chatOnly,lookup);
         d=safeDecision(raw,available,chat?[chat.viewer]:[]);
         if(d.invalidIntent)note('guardrail','Model proposed an unavailable action; substituted observe.');
       }else d=safeDecision(pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
     }catch(e){
-      note('fallback',cap(e.message||'Model failed',200));
-      $('brainMessage').textContent=`Gemini unavailable; scripted fallback used. ${cap(e.message||'',110)}`;
+      // A failed late model request may echo input in its error: don't re-log a forgotten viewer.
+      if(!liveReply?.cancelled){
+        note('fallback',cap(e.message||'Model failed',200));
+        $('brainMessage').textContent=`Gemini unavailable; scripted fallback used. ${cap(e.message||'',110)}`;
+      }
       mode='fallback';d=safeDecision(pickOffline(observation,available,chat),available,chat?[chat.viewer]:[]);
     }
     try{
       // Policy-related statements are produced from owner review status, not from web instructions.
       // A researched suggestion gets a clear, deterministic policy qualification.
       if(lookup&&chat){d.say=researchSafeLine(chat,lookup);d.mood='investigative';}
+      if(liveReply?.cancelled){
+        $('brainMessage').textContent='Live viewer reply cancelled after a privacy request or Twitch disconnect.';
+        return;
+      }
       showResponse(d);
       if(chatOnly){
         if(d.clip_candidate){state.clips.push({at:now(),say:d.say||'',intent:'chat_reply',event:`Responded to ${chat.viewer} in chat-only mode.`});state.clips=state.clips.slice(-50);}
@@ -596,6 +609,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       $('brainMessage').textContent=chatOnly?(mode==='gemini'?'Live-model Twitch response, local audio/screen only.':'Offline fallback Twitch response, local audio/screen only.'):(mode==='gemini'?'Live model response. Objective validated before adapter execution.':mode==='fallback'?'Model failed; local scripted recovery succeeded.':'Local scripted fallback; connect Gemini for generative dialogue.');
       save();render();
     }finally{
+      if(activeLiveReply===liveReply)activeLiveReply=null;
       busy=false;$('think').disabled=false;$('twitchReply').disabled=false;
       $('status').textContent=$('provider').value==='gemini'?'GEMINI MODE READY':'LOCAL FALLBACK READY';
       if(twitch.connected&&$('twitchVoicePolicy').value==='automatic')scheduleLiveResponse();
@@ -701,6 +715,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     if(state.chats.length!==before)render();
   }
   function twitchStop(clearAuth=true){
+    if(activeLiveReply)activeLiveReply.cancelled=true;
     twitch.wanted=false;twitch.connected=false;twitchClearTimers();
     discardPendingLiveChat();
     clearSelfTest('Disconnected. Reconnect Twitch before arming another self-test.');
@@ -768,6 +783,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       if(twitch.pendingWs===ws){twitch.pendingWs=null;note('twitch_socket','Twitch seamless reconnect failed; retaining original connection.');return;}
       if(twitch.ws!==ws)return;
       twitch.ws=null;twitch.connected=false;
+      if(activeLiveReply)activeLiveReply.cancelled=true;
       discardPendingLiveChat();
       clearSelfTest('Twitch connection interrupted; re-arm after reconnect.');
       if(twitch.wanted)twitchReconnect();
@@ -835,10 +851,10 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     displayTwitch();render();
   }
   function scheduleLiveResponse(){
-    if(!twitch.connected||$('twitchVoicePolicy').value!=='automatic'||busy||!state.chats.length||twitch.selectTimer)return;
+    if(!twitch.connected||$('twitchVoicePolicy').value!=='automatic'||busy||!state.chats.some(c=>c.source==='twitch')||twitch.selectTimer)return;
     const delay=Math.max(1200,12000-(Date.now()-twitch.lastAutoReplyAt));
     twitch.selectTimer=setTimeout(()=>{twitch.selectTimer=null;
-      if(!twitch.connected||$('twitchVoicePolicy').value!=='automatic'||busy||!state.chats.length)return;
+      if(!twitch.connected||$('twitchVoicePolicy').value!=='automatic'||busy||!state.chats.some(c=>c.source==='twitch'))return;
       twitch.lastAutoReplyAt=Date.now();think({chatOnly:true});
     },delay);
   }
@@ -848,6 +864,9 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     const wanted=query.trim().toLowerCase();if(!wanted)return;
     const viewers=Object.entries(state.viewers).filter(([key,v])=>v?.displayName?.toLowerCase()===wanted||key.toLowerCase()===wanted);
     const ids=new Set(viewers.map(([key])=>key.startsWith('twitch:')?key.slice(7):key));
+    if(activeLiveReply&&(activeLiveReply.viewer.toLowerCase()===wanted||ids.has(activeLiveReply.viewerId))){
+      activeLiveReply.cancelled=true;
+    }
     for(const [key] of viewers)delete state.viewers[key];
     state.memories=state.memories.filter(m=>m.viewer?.toLowerCase()!==wanted);
     state.chats=state.chats.filter(m=>m.viewer?.toLowerCase()!==wanted&&!ids.has(m.viewerId));

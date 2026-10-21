@@ -33,7 +33,7 @@ class Element{
   getBoundingClientRect(){return {width:220,height:220,left:0,top:0};}
 }
 function storage(){const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,String(v)),removeItem:k=>m.delete(k),clear:()=>m.clear()};}
-function boot(network=false,forgetName=null){
+function boot(network=false,forgetName=null,geminiResponder=null){
   const elements=new Map(ids.map(id=>[id,new Element(id)]));
   const get=id=>{if(!elements.has(id))elements.set(id,new Element(id));return elements.get(id);};
   const document={getElementById:get,createElement:t=>new Element('',t),createElementNS:(_,t)=>new Element('',t),
@@ -53,6 +53,9 @@ function boot(network=false,forgetName=null){
   async function fetchMock(url,opt={}){
     calls.push({url:String(url),method:opt.method??'GET'});
     assert.ok(network,'Unexpected network activity in offline test');
+    if(String(url).startsWith('https://generativelanguage.googleapis.com/v1beta/models/')&&geminiResponder){
+      assert.equal(opt.method,'POST');return geminiResponder(url,opt);
+    }
     if(url==='https://id.twitch.tv/oauth2/validate'){
       assert.equal(opt.headers.Authorization,'OAuth fake-local-token');
       return {ok:true,json:async()=>({client_id:'clankerclient12345',user_id:'broadcaster',
@@ -73,6 +76,7 @@ function boot(network=false,forgetName=null){
     history:{replaceState(){}},setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},
     requestAnimationFrame:f=>f(),speechSynthesis:{cancel(){},speak(){}},
     SpeechSynthesisUtterance:class{},Blob:class{},URL,TextEncoder,TextDecoder,
+    AbortController:class{constructor(){this.signal={aborted:false}}abort(){this.signal.aborted=true}},
     alert(){},confirm:()=>false,prompt:()=>forgetName,console};
   vm.runInNewContext(script,context,{timeout:2500,filename:'index.html:inline'});
   return {get,calls,sockets,localStorage:context.localStorage};
@@ -201,6 +205,68 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.doesNotMatch(saved,/viewerForget|forget1/);
   assert.doesNotMatch(JSON.stringify($f('twitchLog').children),/viewerForget/);
   console.log('PASS forget viewer removes queue, recent display and stored metadata without re-logging handle');
+
+
+  // Race regressions: an asynchronous model reply cannot resurrect a forgotten viewer
+  // or respond after the Twitch connection has been invalidated.
+  function fakeModelReply(text){return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify({
+    say:text,intent:{action:'ask_chat'},chat_target:null,mood:'curious',
+    memory_candidate:{summary:text,importance:.95},clip_candidate:true
+  })}]}}]})};}
+  async function queuedLive(b,handle,id){
+    const $=b.get;
+    $('twitchClient').value='clankerclient12345';$('twitchToken').value='fake-local-token';
+    await $('twitchManual').fire('click');
+    for(let i=0;i<12&&!b.sockets.length;i++)await Promise.resolve();
+    await b.sockets[0].deliver({metadata:{message_type:'session_welcome'},
+      payload:{session:{id:'race-test-session',keepalive_timeout_seconds:30}}});
+    await b.sockets[0].deliver(chatEvent(id,handle,'Clanker, please reply'));
+    assert.equal($('queue').textContent,'1 pending requests');
+    $('provider').value='gemini';$('key').value='fake-not-sent';$('model').value='gemini-mock';
+    return $;
+  }
+  let releaseForget,startedForget=false;
+  const delayedForget=new Promise(resolve=>{releaseForget=resolve});
+  const forgetRace=boot(true,'viewerForget',()=>{startedForget=true;return delayedForget});
+  const $forget=await queuedLive(forgetRace,'viewerForget','race-forget');
+  const forgottenReply=$forget('twitchReply').fire('click');
+  for(let i=0;i<8&&!startedForget;i++)await Promise.resolve();
+  assert.equal(startedForget,true,'Expected a pending model call');
+  await $forget('twitchForget').fire('click');
+  releaseForget(fakeModelReply('Hello viewerForget, a reply too late'));
+  await forgottenReply;
+  assert.match($forget('brainMessage').textContent,/reply cancelled/);
+  assert.doesNotMatch($forget('speech').textContent,/viewerForget/i);
+  assert.doesNotMatch(forgetRace.localStorage.getItem('clanker.brain.v1'),/viewerForget|race-forget/);
+  console.log('PASS forget cancels in-flight model reply without resurrecting viewer data');
+
+  let releaseDisconnect,startedDisconnect=false;
+  const delayedDisconnect=new Promise(resolve=>{releaseDisconnect=resolve});
+  const disconnectRace=boot(true,null,()=>{startedDisconnect=true;return delayedDisconnect});
+  const $disconnect=await queuedLive(disconnectRace,'viewerDisconnected','race-disconnect');
+  const disconnectedReply=$disconnect('twitchReply').fire('click');
+  for(let i=0;i<8&&!startedDisconnect;i++)await Promise.resolve();
+  assert.equal(startedDisconnect,true,'Expected a pending model call');
+  await $disconnect('twitchDisconnect').fire('click');
+  releaseDisconnect(fakeModelReply('Hello viewerDisconnected, stale answer'));
+  await disconnectedReply;
+  assert.match($disconnect('brainMessage').textContent,/reply cancelled/);
+  assert.doesNotMatch($disconnect('speech').textContent,/viewerDisconnected/i);
+  assert.doesNotMatch(disconnectRace.localStorage.getItem('clanker.brain.v1'),/stale answer/);
+  console.log('PASS disconnect cancels in-flight model reply');
+  let rejectLate,startedLate=false;
+  const lateFailure=new Promise((_,reject)=>{rejectLate=reject});
+  const lateFail=boot(true,'viewerFailure',()=>{startedLate=true;return lateFailure});
+  const $late=await queuedLive(lateFail,'viewerFailure','race-reject');
+  const lateReply=$late('twitchReply').fire('click');
+  for(let i=0;i<8&&!startedLate;i++)await Promise.resolve();
+  assert.equal(startedLate,true);
+  await $late('twitchForget').fire('click');
+  rejectLate(new Error('provider echoed viewerFailure on failure'));
+  await lateReply;
+  assert.doesNotMatch(lateFail.localStorage.getItem('clanker.brain.v1'),/viewerFailure|provider echoed/);
+  assert.match($late('brainMessage').textContent,/reply cancelled/);
+  console.log('PASS rejected late model response cannot re-log forgotten handle');
 
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

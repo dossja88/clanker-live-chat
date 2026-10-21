@@ -47,3 +47,7 @@ The read-only Twitch response queue is now separated from the simulated game cha
 ## Local viewer-forget scope
 
 The **Forget viewer** control (exact public username, owner initiated) clears a matched Twitch handle from the current live message list and reply queue, per-viewer memory/profile, on-device session rate-limit maps, and matching generated response labels/clip candidates. Its success diagnostic never repeats the forgotten handle. It does **not** delete Twitch-hosted messages or undo anonymous historical aggregate trend counts, which have no individual identifiers to target. The regression suite includes a synthetic live-message forget/privacy check. No additional OAuth scopes are needed.
+
+## In-flight live-reply lifecycle guard
+
+A live Twitch response is invalidated if the selected viewer is forgotten or the Twitch connection disconnects while a model request is still pending. The late output is not displayed, spoken, saved as a clip, or retained as a memory, and an error from that request cannot re-log the forgotten handle. The automatic live-response timer ignores simulator-only queue items. Offline synthetic regression tests cover these races; real browser, external model and third-party Twitch delivery still need separate validation.
