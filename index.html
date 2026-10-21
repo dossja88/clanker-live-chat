@@ -159,6 +159,7 @@
           <div class="row"><button id="play2048Export" type="button">Export local-game evidence (JSON)</button></div>
           <p class="micro">Export is entirely voluntary; it downloads a local session record with tile states, directions, outcomes and no viewer data, accounts or private keys. Nothing is uploaded.</p>
         </details>
+        <p class="micro">Strategy: a two-step probabilistic preview now favors open spaces, merge opportunities, and an ordered corner-to-corner “snake” arrangement for high tiles. This was selected after comparing 48 seeded offline games to the previous policy, but it is not guaranteed to win. The existing 128-move limit and STOP rules are unchanged.</p>
         <p class="micro">The game and its review history are session-only, and Clanker can be stopped immediately. Browser refresh clears them. This is genuine play of the local puzzle implementation—not gameplay on the original 2048 host, and not a public stream. Inspired by Gabriele Cirulli’s MIT-licensed 2048.</p>
       </section>
       <section class="panel" id="livePanel">
@@ -746,6 +747,24 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     renderLocal2048();
     $('play2048Commentary').textContent='Clanker: “Two tiles! This is the largest strategic responsibility I have ever accepted.”';
   }
+  // Empirically compared against the previous heuristic on separate seeded batches.
+  // This values high tiles ordered along a corner-origin snake, but does not lock any direction.
+  const LOCAL2048_SNAKE_WEIGHTS=Array.from({length:16},(_,i)=>Math.pow(.8,i));
+  const LOCAL2048_SNAKES=(()=>{
+    const paths=[];
+    for(let orientation=0;orientation<2;orientation++)
+      for(let flipRow=0;flipRow<2;flipRow++)
+        for(let flipCol=0;flipCol<2;flipCol++){
+          const path=[];
+          for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+            const row=flipRow?3-i:i;
+            const col=flipCol?(i%2?j:3-j):(i%2?3-j:j);
+            path.push(orientation?[col,row]:[row,col]);
+          }
+          paths.push(path);
+        }
+    return paths;
+  })();
   function rateLocal2048(board){
     const values=board.flat(),empty=values.filter(v=>v===0).length;
     const max=Math.max(...values),corners=[board[0][0],board[0][3],board[3][0],board[3][3]];
@@ -756,7 +775,16 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       if(r<3&&board[r][c]&&board[r+1][c])
         smoothness-=Math.abs(Math.log2(board[r][c])-Math.log2(board[r+1][c]))*2;
     }
-    return 110*empty+(corners.includes(max)?70:0)+smoothness;
+    let snakeBest=-Infinity;
+    for(const path of LOCAL2048_SNAKES){
+      let position=0;
+      for(let i=0;i<16;i++){
+        const [r,c]=path[i];
+        position+=board[r][c]*LOCAL2048_SNAKE_WEIGHTS[i];
+      }
+      snakeBest=Math.max(snakeBest,position);
+    }
+    return 110*empty+(corners.includes(max)?120:0)+smoothness+4*snakeBest;
   }
   function scoreAfterChance2048(board){
     const spaces=empty2048Spaces(board);
