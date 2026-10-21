@@ -133,9 +133,12 @@
       </section>
       <section class="panel" id="play2048Panel">
         <div class="subline"><h2>CLANKER PLAYS 2048</h2><span class="count">SELF-CONTAINED BROWSER GAME</span></div>
-        <p class="micro">An actual playable local 2048-style puzzle board in this browser tab. Clanker observes its tiles, chooses a legal direction and moves the board. No external game website, account, Twitch action, or hardware controller is touched. Autoplay starts only when you explicitly press Start and stops on a hidden tab or after at most 128 steps.</p>
+        <p class="micro">An actual playable local 2048-style puzzle board in this browser tab. Clanker observes its tiles, chooses a legal direction and moves the board. No external game website, account, Twitch action, or hardware controller is touched. Autoplay starts only when you explicitly press Start. Choose a bounded 128-, 512-, or 1,024-move session; STOP, tab hiding and win/loss still end the run.</p>
         <div class="row"><button type="button" id="play2048New" class="primary">New local game</button><button type="button" id="play2048Step">Clanker: one move</button></div>
-        <div class="row" style="margin-top:8px"><button type="button" id="play2048Start">▶ Start Clanker (128 max)</button><button type="button" id="play2048Stop" class="warn">■ STOP gameplay</button></div>
+        <div class="field" style="margin-top:10px"><label for="play2048Budget">Autoplay limit for the next explicit Start</label>
+          <select id="play2048Budget"><option value="128">128 moves — quick session (default)</option><option value="512">512 moves — longer practice</option><option value="1024">1,024 moves — full 2048 attempt (~26 minutes max)</option></select>
+        </div>
+        <div class="row" style="margin-top:8px"><button type="button" id="play2048Start">▶ Start Clanker</button><button type="button" id="play2048Stop" class="warn">■ STOP gameplay</button></div>
         <div class="two" style="margin-top:12px">
           <div class="tile"><div class="k">Game score</div><div class="v" id="play2048Score">0</div></div>
           <div class="tile"><div class="k">Actual moves</div><div class="v" id="play2048Turns">0</div></div>
@@ -144,6 +147,8 @@
         <div id="play2048Board" role="img" aria-label="No game started" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-width:320px;margin:10px 0"></div>
         <div class="row" aria-label="Manual local puzzle controls"><button type="button" id="play2048Up">↑</button><button type="button" id="play2048Left">←</button><button type="button" id="play2048Down">↓</button><button type="button" id="play2048Right">→</button></div>
         <div class="field" style="margin-top:12px"><label for="play2048Advice">Optional owner-entered Crew advice (not Twitch control)</label><select id="play2048Advice"><option value="none">Clanker decides</option><option value="left">Suggest left</option><option value="down">Suggest down</option><option value="up">Suggest up</option><option value="right">Suggest right</option></select></div>
+        <div class="inlinecheck"><input id="play2048CrewVote" type="checkbox"><label for="play2048CrewVote" style="margin:0">Consider consensus from eligible live Twitch Crew (off by default)</label></div>
+        <p id="play2048CrewStatus" class="micro" role="status" aria-live="polite">Live Crew advice off. No viewer can directly move the board.</p>
         <div class="two" style="margin:10px 0">
           <div class="tile"><div class="k">Highest real tile</div><div class="v" id="play2048High">—</div></div>
           <div class="tile"><div class="k">Open spaces</div><div class="v" id="play2048Open">—</div></div>
@@ -159,7 +164,7 @@
           <div class="row"><button id="play2048Export" type="button">Export local-game evidence (JSON)</button></div>
           <p class="micro">Export is entirely voluntary; it downloads a local session record with tile states, directions, outcomes and no viewer data, accounts or private keys. Nothing is uploaded.</p>
         </details>
-        <p class="micro">Strategy: a two-step probabilistic preview now favors open spaces, merge opportunities, and an ordered corner-to-corner “snake” arrangement for high tiles. This was selected after comparing 48 seeded offline games to the previous policy, but it is not guaranteed to win. The existing 128-move limit and STOP rules are unchanged.</p>
+        <p class="micro">Strategy: a two-step probabilistic preview favors open spaces, merge opportunities, and ordered high tiles. The 1,024-move choice is an explicitly started session, not unattended background activity; each Start is separately bounded. Seeded offline games reached 2048 in some long sessions, not guaranteed wins.</p>
         <p class="micro">The game and its review history are session-only, and Clanker can be stopped immediately. Browser refresh clears them. This is genuine play of the local puzzle implementation—not gameplay on the original 2048 host, and not a public stream. Inspired by Gabriele Cirulli’s MIT-licensed 2048.</p>
       </section>
       <section class="panel" id="livePanel">
@@ -642,13 +647,62 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
 
   // Opt-in, tab-local puzzle game. Only the board owned by this module can be changed.
   // Nothing here sends synthetic input to other pages, device games or Twitch.
-  let local2048=null,local2048Timer=null,local2048Remaining=0;
+  let local2048=null,local2048Timer=null,local2048Remaining=0,local2048RunLimit=128;
   let local2048History=[],local2048ReplayIndex=-1,local2048HistoryTruncated=false,local2048SessionAt=null;
   const LOCAL2048_HISTORY_LIMIT=513; // oldest frames can roll off; export says when truncated
   const LOCAL2048_INTERVAL_MS=1500,LOCAL2048_STEP_LIMIT=128;
+  const LIVE2048_ADVICE_TTL_MS=120000,LIVE2048_VOTE_LIMIT=6;
+  let live2048Votes=[];
+  function pruneLive2048Votes(){
+    const current=Date.now();
+    live2048Votes=live2048Votes.filter(v=>v.expiresAt>current).slice(-LIVE2048_VOTE_LIMIT);
+  }
+  function live2048Consensus(){
+    pruneLive2048Votes();
+    if(!$('play2048CrewVote').checked||!twitch.connected)return null;
+    const counts={left:0,down:0,up:0,right:0};
+    for(const vote of live2048Votes)counts[vote.direction]++;
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+    return sorted[0][1]>=2&&sorted[0][1]>sorted[1][1]?sorted[0][0]:null;
+  }
+  function showLive2048Advice(){
+    pruneLive2048Votes();
+    if(!$('play2048CrewVote').checked){
+      $('play2048CrewStatus').textContent='Live Crew advice off. No viewer can directly move the board.';return;
+    }
+    if(!twitch.connected){
+      $('play2048CrewStatus').textContent='Live Crew advice waiting for a connected Twitch chat.';return;
+    }
+    const winner=live2048Consensus();
+    $('play2048CrewStatus').textContent=winner?
+      'Recent Crew consensus: '+winner.toUpperCase()+' ('+
+      live2048Votes.filter(x=>x.direction===winner).length+' viewers). Nonbinding; legal near-ties only.':
+      live2048Votes.length+' recent eligible Crew opinion(s). Two matching votes are needed; ties are ignored.';
+  }
+  function clearLive2048Votes(){
+    live2048Votes=[];showLive2048Advice();
+  }
+  function acceptLive2048Advice(viewerId,message){
+    if(!$('play2048CrewVote').checked||!twitch.connected||!local2048||local2048.status!=='playing')return;
+    const directions=String(message||'').match(/\b(?:left|right|up|down)\b/gi)||[];
+    // Require an explicit move verb. "What's up, Clanker?" is not a vote.
+    const intent=/\b(?:go|move|slide)\s+(?:left|right|up|down)\b/i.test(message);
+    if(directions.length!==1||!intent)return;
+    if(!viewerId||viewerId===twitch.userId)return;
+    pruneLive2048Votes();
+    live2048Votes=live2048Votes.filter(x=>x.viewerId!==viewerId);
+    live2048Votes.push({viewerId,direction:directions[0].toLowerCase(),
+      expiresAt:Date.now()+LIVE2048_ADVICE_TTL_MS});
+    live2048Votes=live2048Votes.slice(-LIVE2048_VOTE_LIMIT);
+    showLive2048Advice();
+  }
+  $('play2048CrewVote').addEventListener('change',()=>{
+    clearLive2048Votes(); // never retroactively harvest previously received chat
+  });
   function stopLocal2048(reason='Clanker stopped.'){
     if(local2048Timer!==null){clearInterval(local2048Timer);local2048Timer=null;}
-    local2048Remaining=0;$('play2048Start').disabled=false;
+    local2048Remaining=0;$('play2048Start').disabled=false;$('play2048Budget').disabled=false;
+    clearLive2048Votes();
     $('play2048Status').textContent=reason;
   }
   function empty2048Spaces(board){
@@ -740,6 +794,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     const board=Array.from({length:4},()=>[0,0,0,0]);
     const first=spawnLocal2048Tile(board),second=spawnLocal2048Tile(board);
     local2048={board,score:0,turns:0,status:'playing'};
+    clearLive2048Votes();
     local2048History=[];local2048ReplayIndex=-1;local2048HistoryTruncated=false;
     local2048SessionAt=now();
     recordLocal2048Frame({source:'initial_board',direction:null,merge_points:0,spawn:[first,second],
@@ -841,7 +896,10 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   }
   function stepLocal2048(){
     if(!local2048||local2048.status!=='playing'){stopLocal2048('Start a new local game to take a step.');return false;}
-    const proposal=chooseLocal2048Action(local2048.board,$('play2048Advice').value);
+    const ownerSuggestion=$('play2048Advice').value;
+    const advisory=PUZZLE_DIRECTIONS.includes(ownerSuggestion)?ownerSuggestion:live2048Consensus();
+    const proposal=chooseLocal2048Action(local2048.board,advisory||'none');
+    showLive2048Advice();
     if(!proposal){local2048.status='lost';stopLocal2048('No legal puzzle moves.');renderLocal2048();return false;}
     return moveLocal2048(proposal.direction,'Clanker');
   }
@@ -850,15 +908,21 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     if(local2048Timer!==null)return;
     if(!local2048)newLocal2048();
     if(local2048.status!=='playing'){stopLocal2048('Create a new game before restarting.');return;}
-    local2048Remaining=LOCAL2048_STEP_LIMIT;
-    $('play2048Start').disabled=true;
-    $('play2048Status').textContent='Clanker autoplay ON — max 128 moves, 1.5 seconds apart.';
+    const selected=Number($('play2048Budget').value);
+    local2048RunLimit=[128,512,1024].includes(selected)?selected:LOCAL2048_STEP_LIMIT;
+    local2048Remaining=local2048RunLimit;
+    $('play2048Start').disabled=true;$('play2048Budget').disabled=true;
+    $('play2048Status').textContent='Clanker autoplay ON — '+local2048RunLimit+'-move limit, 1.5 seconds between moves.';
     local2048Timer=setInterval(()=>{
       if(document.hidden){stopLocal2048('Browser hidden: autoplay stopped.');return;}
-      if(local2048Remaining<=0){stopLocal2048('128-move safety limit reached.');return;}
+      if(local2048Remaining<=0){stopLocal2048(local2048RunLimit+'-move safety limit reached.');return;}
       local2048Remaining--;
-      if(!stepLocal2048()||local2048Remaining===0)
-        stopLocal2048(local2048?.status==='playing'?'128-move safety limit reached.':'Local game ended.');
+      const advanced=stepLocal2048();
+      if(local2048Timer===null)return; // game ended and stop was already invoked
+      if(!advanced){stopLocal2048('Clanker could not make a legal move.');return;}
+      if(local2048Remaining===0)stopLocal2048(local2048RunLimit+'-move safety limit reached. Game preserved; restart manually if desired.');
+      else $('play2048Status').textContent='Clanker autoplay ON · '+local2048Remaining+
+        ' of '+local2048RunLimit+' moves remaining · STOP always available.';
     },LOCAL2048_INTERVAL_MS);
   }
   $('play2048Previous').addEventListener('click',()=>{
@@ -1224,6 +1288,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     for(const k of ['reconnectTimer','healthTimer','validateTimer','selectTimer'])if(twitch[k]){clearTimeout(twitch[k]);clearInterval(twitch[k]);twitch[k]=null;}
   }
   function discardPendingLiveChat(){
+    clearLive2048Votes();
     const before=state.chats.length;
     state.chats=state.chats.filter(item=>item.source!=='twitch');
     if(state.chats.length!==before)render();
@@ -1360,6 +1425,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       const k='twitch:'+viewerId,v=state.viewers[k]||{count:0,firstSeen:now(),displayName:viewer};
       v.count++;v.lastSeen=now();v.displayName=viewer;state.viewers[k]=v;
       save();
+      acceptLive2048Advice(viewerId,message);
       if($('twitchVoicePolicy').value==='automatic')scheduleLiveResponse();
     }
     if(!suspicious(message))maybeFreeReaction(viewerId,message);
@@ -1381,6 +1447,8 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     const wanted=query.trim().toLowerCase();if(!wanted)return;
     const viewers=Object.entries(state.viewers).filter(([key,v])=>v?.displayName?.toLowerCase()===wanted||key.toLowerCase()===wanted);
     const ids=new Set(viewers.map(([key])=>key.startsWith('twitch:')?key.slice(7):key));
+    live2048Votes=live2048Votes.filter(v=>!ids.has(v.viewerId));
+    showLive2048Advice();
     if(activeLiveReply&&(activeLiveReply.viewer.toLowerCase()===wanted||ids.has(activeLiveReply.viewerId))){
       activeLiveReply.cancelled=true;
     }

@@ -1,6 +1,6 @@
 'use strict';
 // Reproducible, zero-dependency offline 2048 policy comparison.
-// Run: node tests/benchmark2048.cjs
+// Run: node tests/benchmark2048.cjs [--long] [--json]
 // Runs actual pure movement/planning functions extracted from index.html.
 // No browser, network, files written, credentials, Twitch, voice or external game.
 const assert=require('node:assert/strict');
@@ -55,6 +55,9 @@ function seeded(seed){
   return ()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/4294967296);
 }
 const DIRECTIONS=['left','down','up','right'];
+const LONG=process.argv.includes('--long');
+const MOVE_LIMIT=LONG?1024:128;
+const GAMES_PER_BATCH=LONG?8:24;
 function oneGame(policy,seed){
   assert.ok(['random','previous','improved'].includes(policy));
   const f=engine[policy],spawnRng=seeded(seed),choiceRng=seeded(seed^0x9e3779b9);
@@ -68,7 +71,7 @@ function oneGame(policy,seed){
   }
   spawn();spawn();
   let score=0,turns=0;
-  while(turns<128){
+  while(turns<MOVE_LIMIT){
     const legal=DIRECTIONS.filter(direction=>f.slide2048(board,direction).legal);
     if(!legal.length)break;
     const direction=policy==='random'?
@@ -85,7 +88,7 @@ function oneGame(policy,seed){
     if(!f.hasLocal2048Move(board))break;
   }
   const highest=Math.max(...board.flat());
-  assert.ok(Number.isFinite(score)&&score>=0&&turns<=128&&turns>=0);
+  assert.ok(Number.isFinite(score)&&score>=0&&turns<=MOVE_LIMIT&&turns>=0);
   return {seed,score,turns,highest,reached256:highest>=256,reached2048:highest>=2048};
 }
 function summarize(runs){
@@ -96,7 +99,7 @@ function summarize(runs){
     reached_256:runs.filter(r=>r.reached256).length,
     reached_2048:runs.filter(r=>r.reached2048).length};
 }
-function batch(start,count=24){
+function batch(start,count=GAMES_PER_BATCH){
   const seeds=Array.from({length:count},(_,i)=>start+i),results={};
   for(const policy of ['random','previous','improved'])
     results[policy]=summarize(seeds.map(seed=>oneGame(policy,seed)));
@@ -105,23 +108,23 @@ function batch(start,count=24){
 assert.deepEqual(oneGame('improved',101),oneGame('improved',101),'Seed replay mismatch');
 const report={schema:'clanker.2048.benchmark.v1',
   source:'index.html pure game functions, isolated offline replay',
-  max_moves_per_game:128,seed_generator:'LCG 32-bit, per-game independent policy/spawn streams',
+  max_moves_per_game:MOVE_LIMIT,seed_generator:'LCG 32-bit, per-game independent policy/spawn streams',
   comparison:'random legal / frozen previous heuristic / current page heuristic',
-  development:{seeds:'1..24',results:batch(1)},
-  holdout:{seeds:'101..124',results:batch(101)}};
-assert.ok(report.holdout.results.improved.mean_score>=report.holdout.results.previous.mean_score,
+  development:{seeds:'1..'+GAMES_PER_BATCH,results:batch(1)},
+  holdout:{seeds:'101..'+(100+GAMES_PER_BATCH),results:batch(101)}};
+if(!LONG)assert.ok(report.holdout.results.improved.mean_score>=report.holdout.results.previous.mean_score,
   'Current strategy regressed below frozen previous policy in holdout batch');
-assert.ok(report.development.results.improved.mean_score>=report.development.results.random.mean_score,
+if(!LONG)assert.ok(report.development.results.improved.mean_score>=report.development.results.random.mean_score,
   'Current strategy below random legal baseline in development');
 if(process.argv.includes('--json'))console.log(JSON.stringify(report,null,2));
 else {
-  console.log('Clanker local 2048: 128 moves/game; 24 development + 24 holdout seeds.');
+  console.log('Clanker local 2048: '+MOVE_LIMIT+' moves/game; '+GAMES_PER_BATCH+' development + '+GAMES_PER_BATCH+' holdout seeds.');
   for(const [name,group] of [['Development',report.development],['Holdout',report.holdout]]){
     console.log(name+' ('+group.seeds+')');
     for(const [policy,data] of Object.entries(group.results))
       console.log('  '+policy+': mean score '+data.mean_score+
         ', median '+data.median_score+', mean high tile '+data.mean_highest_tile+
-        ', reached 256 '+data.reached_256+'/'+data.games);
+        ', reached 256 '+data.reached_256+'/'+data.games+', won '+data.reached_2048+'/'+data.games);
   }
   console.log('PASS reproducible seeded benchmark (offline source functions only)');
 }

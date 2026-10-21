@@ -46,3 +46,31 @@ The retained two-step chance-aware policy still values open cells, immediate mer
 - Future no-cost work: benchmark longer horizons **separately** from the opt-in browser cap, add deterministic reference scenarios for tactical corner failures, and validate CPU responsiveness on target browsers when available. Avoid adding CI/scheduled costs or silently changing the cap.
 
 Reversion is a normal code revert and restore of prior heuristic plus the corresponding handoff update, never a force push. This benchmark is a standalone, manual CLI tool; it is not a scheduled job.
+
+## Extended 1,024-move horizon (2026-10-21)
+
+Run the **separate** long-horizon mode:
+
+```sh
+node tests/benchmark2048.cjs --long
+node tests/benchmark2048.cjs --long --json
+```
+
+The default command above (without `--long`) still runs exactly the historical **128 moves and 24+24 seeds per policy**, so the earlier evidence stays comparable. The extended run deliberately uses smaller **8 development + 8 holdout** seed batches per policy and a strict 1,024-move maximum. Both are non-billable offline model-free board simulations with identical rules to the in-page puzzle; the evaluator is extracted from the current `index.html`, and previous heuristic rating remains frozen. This does **not** start browser autoplay. Same-seed determinism is checked, and seeds use the existing independent game-spawn and random-baseline selection streams.
+
+The table below was independently executed against the proposed app/benchmark blobs in the **connected V8 isolate with Node built-ins shimmed**, not actual Node CLI or a graphical browser. The seeds are few, the simulator does not measure Xbox CPU/TTS performance, and improvements on these particular seeds are not reliable population win-rate estimates.
+
+| Seed group (8 games each) | Policy | Mean score | Mean turns | Mean highest tile | Reached 2048 |
+|---|---|---:|---:|---:|---:|
+| Development 1–8 | Random-legal baseline | 1,049 | 113 | 112 | 0/8 |
+| Development 1–8 | Frozen previous strategy | 8,682 | 555 | 672 | 0/8 |
+| Development 1–8 | Current positional strategy | **18,608** | 954 | 1,664 | **5/8** |
+| Holdout 101–108 | Random-legal baseline | 1,180 | 125 | 112 | 0/8 |
+| Holdout 101–108 | Frozen previous strategy | 10,716 | 658 | 832 | 0/8 |
+| Holdout 101–108 | Current positional strategy | **15,265** | 868 | 1,088 | **1/8** |
+
+The game UI now offers an explicit 1,024-move session because some trials genuinely reached the in-page 2048 goal with that horizon. It does not raise the default 128-move cap or bypass the STOP, tab-hide, account, streaming and external-game gates.
+
+Additionally, `tests/regression.cjs` now verifies a **full game-rule autoplay** using deterministic seed 1: the browser game state actually accumulates legal moves and random spawns until 2048 at turn **1,019**, the timer stops, final status is won, and the evidence record is capped at 513 frames and correctly marked incomplete from the start. Other synthetic tests exercise the opt-in budget lock, invalid input falling back to 128, privacy-preserving selected Twitch advice, malicious and ambiguous vote rejection, forgetting, and disconnect handling. This is far stronger than a mere planning preview, but is still not an actual Xbox/Android browser run.
+
+Long sessions may cause device heat, battery consumption and slow navigation; they only run while the owner keeps a page visible and have no pause-resume persistence after tab reload. Real-device performance requires an explicit smoke test, not inference from desktop or V8 results.
