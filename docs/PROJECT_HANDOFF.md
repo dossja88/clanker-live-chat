@@ -1,5 +1,9 @@
 # Clanker AI — canonical project handoff
 
+## Conditional creator Drive review cleanup policy (2026-10-21)
+
+Owner selected recommendation/approval-first cleanup across projects where dedicated creator Drive is later used for authorized browser-viewable private media. Explicitly temporary previews become suggested deletion candidates **after** genuine owner evaluation and verified source/master/milestone preservation; no automatic trash, personal-account cleanup, other-project cleanup or destructive response to `go`. Public repository must not disclose creator account email, private Drive IDs/links or credentials. This updates the future-use guidance in `AGENTS.md` only: **no new Drive integration, media generation, account access, billing, upload, storage archive or publication** is authorized or executed. The existing browser-first Clanker experience remains unaffected. A separate redundant protected-original archive may be evaluated later without changing current project operation.
+
 ## Instruction synchronization — 2026-10-21
 
 Owner-authorized documentation-only update on `main`, based on `e5388b80c4da854ea7d25aab28e274b3ddbf6521`. Standardized `go` continuation and automatic task-appropriate reasoning/tool/verification choices in AGENTS.md; preserved existing commands, project decisions, permissions and restrictions. Keep public-repository privacy, approved identity, receive-only Twitch, bounded local gameplay and stream/external-game gates; no app, workflow, permission or deployment configuration change.
