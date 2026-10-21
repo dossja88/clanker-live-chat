@@ -181,7 +181,7 @@
         <p class="micro">Only events received while Clanker's browser connection is active are counted. Unique chatters are counted for the current session only; this is not total channel viewership or retention. Combine later with Twitch/YouTube analytics.</p>
       </section>
       <section class="panel">
-        <h2>OFFLINE CHAT TEST</h2><p class="micro">Simulate how a viewer influences Clanker without directly controlling him. Requests expire in two minutes.</p>
+        <h2>OFFLINE CHAT TEST</h2><p class="micro">Simulate how a viewer influences Clanker without directly controlling him. Requests expire in two minutes. Simulator turns use offline requests; connected live Twitch replies use only real selected viewers.</p>
         <div class="two"><div class="field"><label for="viewer">Viewer</label><input id="viewer" placeholder="e.g. PixelPanda" maxlength="24" value="PixelPanda" autocomplete="off"></div><div class="field"><label for="chat">Message</label><input id="chat" placeholder="Try fighting that thing!" maxlength="280" autocomplete="off"></div></div>
         <div class="row"><button id="sendChat">Submit simulated chat</button><span class="micro" id="queue">0 pending requests</span></div>
         <div class="divider"></div><div class="log" id="chatLog"><div class="empty">No viewer requests yet.</div></div>
@@ -546,9 +546,17 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     if(busy)return;
     const chatOnly=options.chatOnly===true;
     cleanChat();
-    if(chatOnly&&!state.chats.length){$('brainMessage').textContent='No selected viewer message is waiting.';return;}
+    // Keep offline training requests separate from real Twitch viewers.
+    const chatIndex=state.chats.findIndex(item=>chatOnly?
+      (twitch.connected?item.source==='twitch':item.source!=='twitch'):
+      item.source!=='twitch');
+    if(chatOnly&&chatIndex<0){
+      $('brainMessage').textContent=twitch.connected?
+        'No selected live Twitch message is waiting.':'No selected viewer message is waiting.';
+      return;
+    }
     busy=true;$('think').disabled=true;$('twitchReply').disabled=true;
-    const chat=state.chats.shift()||null;
+    const chat=chatIndex>=0?state.chats.splice(chatIndex,1)[0]:null;
     const observation=clone(state.game);
     const available=chatOnly?['observe','ask_chat','wait']:allowed(observation);
     let d,mode='offline',lookup=null;
@@ -687,8 +695,14 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   function twitchClearTimers(){
     for(const k of ['reconnectTimer','healthTimer','validateTimer','selectTimer'])if(twitch[k]){clearTimeout(twitch[k]);clearInterval(twitch[k]);twitch[k]=null;}
   }
+  function discardPendingLiveChat(){
+    const before=state.chats.length;
+    state.chats=state.chats.filter(item=>item.source!=='twitch');
+    if(state.chats.length!==before)render();
+  }
   function twitchStop(clearAuth=true){
     twitch.wanted=false;twitch.connected=false;twitchClearTimers();
+    discardPendingLiveChat();
     clearSelfTest('Disconnected. Reconnect Twitch before arming another self-test.');
     for(const ws of [twitch.pendingWs,twitch.ws,twitch.oldWs])if(ws){try{ws.close(1000,'Clanker disconnected');}catch(e){}}
     twitch.ws=null;twitch.pendingWs=null;twitch.oldWs=null;
@@ -709,7 +723,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   function twitchReconnect(){
     if(!twitch.wanted||twitch.reconnectTimer)return;
     twitch.connected=false;
-    if(twitch.attempts>=8){twitchStatus('Twitch connection failed repeatedly. Disconnect and reconnect manually.',true);twitch.wanted=false;return;}
+    if(twitch.attempts>=8){discardPendingLiveChat();twitchStatus('Twitch connection failed repeatedly. Disconnect and reconnect manually.',true);twitch.wanted=false;return;}
     const delay=Math.min(30000,1500*2**twitch.attempts)+Math.floor(Math.random()*500);
     twitch.attempts++;
     twitchStatus(`◌ Twitch reconnect in ${Math.ceil(delay/1000)}s (attempt ${twitch.attempts})`);
@@ -754,6 +768,7 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       if(twitch.pendingWs===ws){twitch.pendingWs=null;note('twitch_socket','Twitch seamless reconnect failed; retaining original connection.');return;}
       if(twitch.ws!==ws)return;
       twitch.ws=null;twitch.connected=false;
+      discardPendingLiveChat();
       clearSelfTest('Twitch connection interrupted; re-arm after reconnect.');
       if(twitch.wanted)twitchReconnect();
     };

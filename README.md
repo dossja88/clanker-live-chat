@@ -39,3 +39,7 @@ Target practical automation with **$0 added recurring operating cost**. Billing 
 ## Next milestone
 
 **Real Twitch broadcaster delivery: owner reported PASS on 2026-10-20.** The opt-in self-test confirms a single matching broadcaster-authored `channel.chat.message` EventSub notification arrived at the live Clanker page. It does not count as normal Crew chat or validate response generation. Next prioritize the existing in-app regression suite and safe dialogue tests, followed by genuine third-party viewer-message validation when an independently consenting viewer naturally becomes available. No second account or public broadcast is needed just to repeat the self-test. See `docs/PROJECT_HANDOFF.md` for evidence and next actions.
+
+## Live/offline queue isolation (2026-10-20)
+
+The read-only Twitch response queue is now separated from the simulated game chat queue. While Twitch is connected, **Reply to next selected message** uses only an eligible real Twitch message; normal simulator turns consume only offline requests. Disconnecting or losing the Twitch socket drops pending live viewer requests but preserves unrelated simulator input, avoiding accidental simulator actions and stale replies. The existing dependency-free regression runner now covers mixed-source queues and disconnection with mock EventSub traffic. These synthetic checks do **not** establish a new real Twitch response test.
