@@ -43,7 +43,12 @@ function boot(network=false,forgetName=null,geminiResponder=null){
     hidden:false,body:new Element('body')};
   for(const [k,v] of Object.entries({provider:'offline',scenario:'outpost',twitchPolicy:'addressed',
     twitchVoicePolicy:'manual',policyVerdict:'unknown',avatarPreview:'auto',analyticsScope:'on'}))get(k).value=v;
-  const calls=[],sockets=[],intervals=new Map();let nextTimerId=10;
+  const calls=[],sockets=[],intervals=new Map(),downloads=[];let nextTimerId=10;
+  const BrowserURL=class extends URL{
+    static createObjectURL(){return 'blob:local-evidence-test';}
+    static revokeObjectURL(){}
+  };
+  class BrowserBlob{constructor(parts,options){downloads.push({text:parts.join(''),type:options?.type});}}
   class Socket{
     static OPEN=1;
     constructor(url){assert.ok(network,'Offline flow tried to open a socket');
@@ -79,11 +84,11 @@ function boot(network=false,forgetName=null,geminiResponder=null){
     setInterval:(fn,ms)=>{const id=nextTimerId++;intervals.set(id,{fn,ms});return id;},
     clearInterval:id=>intervals.delete(id),
     requestAnimationFrame:f=>f(),speechSynthesis:{cancel(){},speak(){}},
-    SpeechSynthesisUtterance:class{},Blob:class{},URL,TextEncoder,TextDecoder,
+    SpeechSynthesisUtterance:class{},Blob:BrowserBlob,URL:BrowserURL,TextEncoder,TextDecoder,
     AbortController:class{constructor(){this.signal={aborted:false}}abort(){this.signal.aborted=true}},
     alert(){},confirm:()=>false,prompt:()=>forgetName,console};
   vm.runInNewContext(script,context,{timeout:2500,filename:'index.html:inline'});
-  return {get,calls,sockets,localStorage:context.localStorage,
+  return {get,calls,sockets,localStorage:context.localStorage,downloads,
     tickIntervals:async()=>{for(const {fn} of [...intervals.values()])await fn();},
     getIntervalCount:()=>intervals.size,setHidden:v=>{document.hidden=Boolean(v);
       for(const f of documentEvents.visibilitychange||[])f();}};
@@ -564,6 +569,84 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.equal(capped.calls.length,0);
   assert.equal($cap('play2048Start').disabled,false);
   console.log('PASS autoplay terminates by game end or hard 128-step cap without external calls');
+
+
+  // Local puzzle evidence must be about real executed tiles, never model predictions.
+  const evidence=boot(),$e=evidence.get;
+  await $e('play2048New').fire('click');
+  assert.equal($e('play2048ReplayBoard').children.length,16);
+  assert.match($e('play2048ReplayStatus').textContent,/frame 1\/1.*initial tiles/);
+  assert.ok(['2','4'].includes($e('play2048High').textContent));
+  assert.equal($e('play2048Open').textContent,'14');
+  await $e('play2048Step').fire('click');
+  assert.match($e('play2048ReplayStatus').textContent,/frame 2\/2.*Clanker/);
+  assert.ok(['13','14'].includes($e('play2048Open').textContent));
+  assert.equal($e('play2048ReplayBoard').children.length,16);
+  const latestTiles=$e('play2048ReplayBoard').children.map(cell=>cell.textContent).join(',');
+  await $e('play2048Previous').fire('click');
+  assert.match($e('play2048ReplayStatus').textContent,/frame 1\/2.*review only/);
+  const previousTiles=$e('play2048ReplayBoard').children.map(cell=>cell.textContent).join(',');
+  assert.notEqual(previousTiles,latestTiles);
+  assert.equal($e('play2048Turns').textContent,'1');
+  await $e('play2048Next').fire('click');
+  assert.equal($e('play2048ReplayBoard').children.map(c=>c.textContent).join(','),latestTiles);
+  await $e('play2048Previous').fire('click');
+  await $e('play2048Live').fire('click');
+  assert.match($e('play2048ReplayStatus').textContent,/latest/);
+  assert.equal($e('play2048ReplayBoard').children.map(c=>c.textContent).join(','),latestTiles);
+  assert.equal(evidence.calls.length,0);
+  console.log('PASS local puzzle replay shows immutable real frames, not a game-state rewind');
+
+  await $e('play2048Export').fire('click');
+  assert.equal(evidence.downloads.length,1);
+  const exported=JSON.parse(evidence.downloads[0].text);
+  assert.equal(exported.schema,'clanker.local2048.evidence.v1');
+  assert.equal(exported.origin,'in_page_local_game');
+  assert.equal(exported.completeFromStart,true);
+  assert.equal(exported.frames.length,2);
+  assert.equal(exported.frames[0].turn,0);
+  assert.equal(exported.frames[1].turn,1);
+  assert.equal(exported.frames[1].source,'Clanker');
+  assert.ok(['left','down','up','right'].includes(exported.frames[1].direction));
+  assert.ok([2,4].includes(exported.frames[1].spawn.value));
+  assert.equal(exported.frames[1].score,Number($e('play2048Score').textContent));
+  assert.equal(exported.frames[1].board.flat().length,16);
+  assert.doesNotMatch(evidence.downloads[0].text,/viewerForget|fake-local-token|client_id/);
+  assert.equal(evidence.calls.length,0);
+  console.log('PASS optional JSON evidence export includes only actual local puzzle events');
+
+  await $e('play2048New').fire('click');
+  assert.match($e('play2048ReplayStatus').textContent,/frame 1\/1/);
+  await $e('play2048Export').fire('click');
+  assert.equal(evidence.downloads.length,2);
+  assert.equal(JSON.parse(evidence.downloads[1].text).frames.length,1);
+  console.log('PASS new game clears all prior evidence; no cross-session replay');
+
+  // Generic Crew speech must not deny the new local puzzle, and cannot operate it.
+  const crewPuzzle=boot(),$cp=crewPuzzle.get;
+  await $cp('play2048New').fire('click');
+  await $cp('play2048Step').fire('click');
+  $cp('viewer').value='GridCrew';$cp('chat').value='Clanker, are you playing a game?';
+  await $cp('sendChat').fire('click');await $cp('twitchReply').fire('click');
+  assert.match($cp('speech').textContent,/local 2048 puzzle/);
+  assert.match($cp('speech').textContent,/score \d+ after 1 moves/);
+  assert.equal($cp('play2048Turns').textContent,'1');
+  $cp('viewer').value='Advisory';$cp('chat').value='Clanker attack now';
+  await $cp('sendChat').fire('click');await $cp('twitchReply').fire('click');
+  assert.match($cp('speech').textContent,/The Crew is counsel, not a controller/);
+  assert.equal($cp('play2048Turns').textContent,'1');
+  assert.equal(crewPuzzle.calls.length,0);
+  console.log('PASS Crew dialogue acknowledges actual puzzle without allowing chat to move it');
+
+  // Spoken gameplay is an opt-in separate from the existing TTS preference.
+  const silent=boot(),$si=silent.get;
+  await $si('play2048New').fire('click');
+  assert.equal($si('play2048Narrate').checked,false);
+  await $si('play2048Step').fire('click');
+  assert.match($si('play2048Commentary').textContent,/Clanker:/);
+  assert.equal($si('play2048Turns').textContent,'1');
+  assert.equal(silent.calls.length,0);
+  console.log('PASS local puzzle comments are grounded while additional voice stays opt-in');
 
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

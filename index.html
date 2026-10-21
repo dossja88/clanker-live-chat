@@ -144,8 +144,22 @@
         <div id="play2048Board" role="img" aria-label="No game started" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-width:320px;margin:10px 0"></div>
         <div class="row" aria-label="Manual local puzzle controls"><button type="button" id="play2048Up">↑</button><button type="button" id="play2048Left">←</button><button type="button" id="play2048Down">↓</button><button type="button" id="play2048Right">→</button></div>
         <div class="field" style="margin-top:12px"><label for="play2048Advice">Optional owner-entered Crew advice (not Twitch control)</label><select id="play2048Advice"><option value="none">Clanker decides</option><option value="left">Suggest left</option><option value="down">Suggest down</option><option value="up">Suggest up</option><option value="right">Suggest right</option></select></div>
+        <div class="two" style="margin:10px 0">
+          <div class="tile"><div class="k">Highest real tile</div><div class="v" id="play2048High">—</div></div>
+          <div class="tile"><div class="k">Open spaces</div><div class="v" id="play2048Open">—</div></div>
+        </div>
+        <div class="inlinecheck"><input type="checkbox" id="play2048Narrate"><label for="play2048Narrate" style="margin:0">Occasional voice + expression for real puzzle milestones (requires Voice on)</label></div>
         <div class="log-item" id="play2048Commentary" aria-live="polite">Clanker: “At last, a grid that will tolerate my leadership.”</div>
-        <p class="micro">The game is session-only, and Clanker can be stopped immediately. Browser refresh clears it. This is genuine play of the local puzzle implementation—not gameplay on the original 2048 host, and not a public stream. Inspired by Gabriele Cirulli’s MIT-licensed 2048.</p>
+        <details class="advanced" id="play2048Review">
+          <summary>Review actual moves (session-only)</summary>
+          <p class="micro">Frames below come from the in-tab playable board, never from simulated encounters or the manual observation lab. Reviewing does not rewind gameplay or authorize actions.</p>
+          <div class="row" style="margin:10px 0"><button id="play2048Previous" type="button">← Previous frame</button><button id="play2048Next" type="button">Next frame →</button><button id="play2048Live" type="button">Show latest</button></div>
+          <p class="micro" id="play2048ReplayStatus">No completed moves to review.</p>
+          <div id="play2048ReplayBoard" role="img" aria-label="No replay" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-width:250px;margin:10px 0"></div>
+          <div class="row"><button id="play2048Export" type="button">Export local-game evidence (JSON)</button></div>
+          <p class="micro">Export is entirely voluntary; it downloads a local session record with tile states, directions, outcomes and no viewer data, accounts or private keys. Nothing is uploaded.</p>
+        </details>
+        <p class="micro">The game and its review history are session-only, and Clanker can be stopped immediately. Browser refresh clears them. This is genuine play of the local puzzle implementation—not gameplay on the original 2048 host, and not a public stream. Inspired by Gabriele Cirulli’s MIT-licensed 2048.</p>
       </section>
       <section class="panel" id="livePanel">
         <div class="subline"><h2>LIVE TWITCH CHAT</h2><span class="count">REAL EVENTSUB</span></div>
@@ -628,6 +642,8 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   // Opt-in, tab-local puzzle game. Only the board owned by this module can be changed.
   // Nothing here sends synthetic input to other pages, device games or Twitch.
   let local2048=null,local2048Timer=null,local2048Remaining=0;
+  let local2048History=[],local2048ReplayIndex=-1,local2048HistoryTruncated=false,local2048SessionAt=null;
+  const LOCAL2048_HISTORY_LIMIT=513; // oldest frames can roll off; export says when truncated
   const LOCAL2048_INTERVAL_MS=1500,LOCAL2048_STEP_LIMIT=128;
   function stopLocal2048(reason='Clanker stopped.'){
     if(local2048Timer!==null){clearInterval(local2048Timer);local2048Timer=null;}
@@ -641,8 +657,8 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   function spawnLocal2048Tile(board){
     const empty=empty2048Spaces(board);if(!empty.length)return false;
     const n=empty[Math.floor(Math.random()*empty.length)];
-    board[n[0]][n[1]]=Math.random()<.9?2:4;
-    return true;
+    const tile=Math.random()<.9?2:4;board[n[0]][n[1]]=tile;
+    return {row:n[0],column:n[1],value:tile};
   }
   function hasLocal2048Move(board){
     return PUZZLE_DIRECTIONS.some(direction=>slide2048(board,direction).legal);
@@ -660,12 +676,73 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       local2048.board.map(row=>row.join(', ')).join('; '));
     $('play2048Score').textContent=String(local2048.score);
     $('play2048Turns').textContent=String(local2048.turns);
+    $('play2048High').textContent=String(Math.max(...local2048.board.flat()));
+    $('play2048Open').textContent=String(empty2048Spaces(local2048.board).length);
+  }
+  function recordLocal2048Frame(details){
+    if(!local2048)return;
+    local2048History.push({turn:local2048.turns,score:local2048.score,status:local2048.status,
+      board:local2048.board.map(row=>row.slice()),...details});
+    if(local2048History.length>LOCAL2048_HISTORY_LIMIT){
+      local2048History.shift();local2048HistoryTruncated=true;
+      if(local2048ReplayIndex>=0)local2048ReplayIndex=Math.max(0,local2048ReplayIndex-1);
+    }
+    renderLocal2048Review();
+  }
+  function drawLocal2048Review(board){
+    const host=$('play2048ReplayBoard');host.replaceChildren();
+    for(const row of board)for(const n of row){
+      const cell=document.createElement('div');cell.textContent=n?String(n):'·';
+      cell.style.cssText='display:grid;place-items:center;min-height:37px;border-radius:7px;background:'+
+        (n?'#30566a':'#203246')+';color:#fff;font-weight:750';
+      host.append(cell);
+    }
+    host.setAttribute('aria-label','Recorded local puzzle tiles: '+board.map(row=>row.join(', ')).join('; '));
+  }
+  function renderLocal2048Review(){
+    const count=local2048History.length;
+    if(!count){$('play2048ReplayBoard').replaceChildren();
+      $('play2048ReplayStatus').textContent='No local game moves recorded.';return;}
+    const pos=local2048ReplayIndex<0?count-1:Math.min(local2048ReplayIndex,count-1);
+    const frame=local2048History[pos];
+    drawLocal2048Review(frame.board);
+    $('play2048ReplayStatus').textContent='Recorded frame '+(pos+1)+'/'+count+
+      ' · turn '+frame.turn+' · score '+frame.score+
+      ' · '+(frame.direction?frame.source+' '+frame.direction+
+        ' (merge +'+frame.merge_points+', spawned '+(frame.spawn?.value||'none')+')':'initial tiles')+
+      (local2048HistoryTruncated?' · early frames truncated':'')+
+      (local2048ReplayIndex<0?' · latest':' · review only');
+  }
+  function local2048Milestone(entry,previousHigh){
+    if(local2048.status==='won')return {say:'We reached 2048! A documented victory. I may never recover from the excitement.',mood:'triumphant',major:true};
+    if(local2048.status==='lost')return {say:'No moves remain. The board won this time. I request an official rematch.',mood:'concerned',major:true};
+    if(entry.highest_tile>=64&&entry.highest_tile>previousHigh)
+      return {say:'A real '+entry.highest_tile+' tile! The Crew can verify my improbable competence.',mood:'happy',major:true};
+    if(entry.open_spaces<=2)
+      return {say:'Only '+entry.open_spaces+' empty spaces remain. This is a terrible time to develop stage fright.',mood:'concerned',major:entry.turn%8===0};
+    if(entry.merge_points>=64)
+      return {say:'That merge earned '+entry.merge_points+' points. I would like to thank the laws of arithmetic.',mood:'smug',major:entry.turn%8===0};
+    if(entry.turn%16===0)
+      return {say:'Turn '+entry.turn+', score '+entry.score+', highest tile '+entry.highest_tile+
+        '. Progress continues. Confidence is not a metric.',mood:'curious',major:true};
+    return {say:entry.direction.toUpperCase()+' produced '+entry.merge_points+
+      ' merge points. Highest tile '+entry.highest_tile+'.',mood:'curious',major:false};
+  }
+  function narrateLocal2048(event){
+    // Keep user-enabled game speech sparse and lower priority than live chat replies.
+    if(!event.major||!$('play2048Narrate').checked||!voiceEnabled||busy||activeLiveReply||document.hidden)return;
+    if(speechQueue.length||activeSpeech)return;
+    setAvatarMood(event.mood);speak(event.say);
   }
   function newLocal2048(){
     stopLocal2048('New local board ready. Autoplay is OFF.');
     const board=Array.from({length:4},()=>[0,0,0,0]);
-    spawnLocal2048Tile(board);spawnLocal2048Tile(board);
+    const first=spawnLocal2048Tile(board),second=spawnLocal2048Tile(board);
     local2048={board,score:0,turns:0,status:'playing'};
+    local2048History=[];local2048ReplayIndex=-1;local2048HistoryTruncated=false;
+    local2048SessionAt=now();
+    recordLocal2048Frame({source:'initial_board',direction:null,merge_points:0,spawn:[first,second],
+      highest_tile:Math.max(...board.flat()),open_spaces:empty2048Spaces(board).length});
     renderLocal2048();
     $('play2048Commentary').textContent='Clanker: “Two tiles! This is the largest strategic responsibility I have ever accepted.”';
   }
@@ -713,9 +790,10 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     if(document.hidden){stopLocal2048('Browser tab hidden: game paused safely.');return false;}
     const move=slide2048(local2048.board,direction);
     if(!move.legal)return false;
+    const previousHigh=Math.max(...local2048.board.flat());
     local2048.board=move.board;local2048.score+=move.merge_points;local2048.turns++;
     // A successful real move receives its own random tile, unlike the observation lab.
-    spawnLocal2048Tile(local2048.board);
+    const spawned=spawnLocal2048Tile(local2048.board);
     const max=Math.max(...local2048.board.flat());
     if(max>=2048){local2048.status='won';stopLocal2048('2048 reached! Local game won; autoplay stopped.');}
     else if(!hasLocal2048Move(local2048.board)){
@@ -723,11 +801,14 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     }else $('play2048Status').textContent=source+' moved '+direction+'. Local game active'+
       (local2048Timer!==null?' · autoplay ON.':' · autoplay OFF.');
     renderLocal2048();
-    $('play2048Commentary').textContent=source==='Clanker'?
-      (move.merge_points?
-        'Clanker: “'+direction.toUpperCase()+'! A successful merger. My financial department will be thrilled.”':
-        'Clanker: “'+direction.toUpperCase()+'. I am creating space for brilliance, or possibly additional squares.”'):
-      'Manual '+direction+' move performed on the local board.';
+    const entry={source,direction,merge_points:move.merge_points,spawn:spawned,
+      highest_tile:max,open_spaces:empty2048Spaces(local2048.board).length};
+    recordLocal2048Frame(entry);
+    const event=local2048Milestone({turn:local2048.turns,score:local2048.score,...entry},previousHigh);
+    $('play2048Commentary').textContent=source==='Clanker'?'Clanker: “'+event.say+'”':
+      'Owner moved '+direction.toUpperCase()+'. Real score '+local2048.score+
+      ', highest tile '+max+'.';
+    if(source==='Clanker')narrateLocal2048(event);
     return true;
   }
   function stepLocal2048(){
@@ -752,6 +833,31 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
         stopLocal2048(local2048?.status==='playing'?'128-move safety limit reached.':'Local game ended.');
     },LOCAL2048_INTERVAL_MS);
   }
+  $('play2048Previous').addEventListener('click',()=>{
+    if(!local2048History.length)return;
+    const from=local2048ReplayIndex<0?local2048History.length-1:local2048ReplayIndex;
+    local2048ReplayIndex=Math.max(0,from-1);renderLocal2048Review();
+  });
+  $('play2048Next').addEventListener('click',()=>{
+    if(!local2048History.length)return;
+    const from=local2048ReplayIndex<0?local2048History.length-1:local2048ReplayIndex;
+    local2048ReplayIndex=Math.min(local2048History.length-1,from+1);renderLocal2048Review();
+  });
+  $('play2048Live').addEventListener('click',()=>{
+    local2048ReplayIndex=-1;renderLocal2048Review();
+  });
+  $('play2048Export').addEventListener('click',()=>{
+    if(!local2048History.length){$('play2048ReplayStatus').textContent='Start a local game before exporting.';return;}
+    try{
+      const packet={schema:'clanker.local2048.evidence.v1',origin:'in_page_local_game',
+        exportedAt:now(),sessionStartedAt:local2048SessionAt,
+        completeFromStart:!local2048HistoryTruncated,frames:local2048History};
+      const blob=new Blob([JSON.stringify(packet,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download='clanker-local2048-'+new Date().toISOString().slice(0,10)+'.json';
+      document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+    }catch(e){$('play2048ReplayStatus').textContent='Local export unavailable on this browser.';}
+  });
   $('play2048New').addEventListener('click',newLocal2048);
   $('play2048Step').addEventListener('click',()=>{if(local2048Timer===null)stepLocal2048();});
   $('play2048Start').addEventListener('click',startLocal2048);
@@ -783,7 +889,9 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     const who=chat?.viewer||'Crew',text=String(chat?.message||'');
     let say,mood='curious';
     if(/\b(?:play|playing|beat|defeat|gameplay|streaming|game)\b/i.test(text)){
-      say=`${who}, the game controls are not connected yet. I can inspect plans, not pretend I conquered a world. Confidence remains extremely available.`;
+      say=local2048?
+        `${who}, I am playing my own local 2048 puzzle: score ${local2048.score} after ${local2048.turns} moves, highest tile ${Math.max(...local2048.board.flat())}. No external games are connected.`:
+        `${who}, the game controls are not connected yet to an outside game. I can inspect plans and play my own local 2048 puzzle, but not pretend I conquered another world.`;
       mood='thoughtful';
     }else if(/\b(?:how are you|you ok|doing alright|feeling|status)\b/i.test(text)){
       say=`${who}, I am curious, lightly dented, and operational. How is The Crew holding together?`;
@@ -792,7 +900,9 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       say=`${who}! Greetings from the experimental corner of robot history. Have you brought advice, or excellent timing?`;
       mood='happy';
     }else if(/\b(?:retreat|attack|fight|run away|explore|heal|rest|boss)\b/i.test(text)){
-      say=`${who}, tactical suggestion received. I will weigh it when an approved game exists to weigh it in. No buttons are being pressed.`;
+      say=local2048?
+        `${who}, I hear your advice. On my local 2048 board, I choose my own moves; The Crew is counsel, not a controller.`:
+        `${who}, tactical suggestion received. I can consider that for my local puzzle, but it cannot control outside games.`;
       mood='thoughtful';
     }else if(/\b(?:nice|great|love|good job|well done|awesome)\b/i.test(text)){
       say=`${who}, praise detected. Evidence that humans occasionally make excellent decisions.`;
