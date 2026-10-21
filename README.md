@@ -51,3 +51,7 @@ The **Forget viewer** control (exact public username, owner initiated) clears a 
 ## In-flight live-reply lifecycle guard
 
 A live Twitch response is invalidated if the selected viewer is forgotten or the Twitch connection disconnects while a model request is still pending. The late output is not displayed, spoken, saved as a clip, or retained as a memory, and an error from that request cannot re-log the forgotten handle. The automatic live-response timer ignores simulator-only queue items. Offline synthetic regression tests cover these races; real browser, external model and third-party Twitch delivery still need separate validation.
+
+## Post-reply privacy and queue fairness
+
+When an owner forgets a viewer, Clanker also stops queued/current synthetic speech and clears the last saved and displayed response, which may contain viewer information even in old backups without attribution. This intentionally sacrifices only the last response for privacy; other game state and Crew records remain. Local simulator input has its own 15-entry bound and cannot evict up to six waiting live Twitch selections, and expired requests are pruned before live admission. These paths are covered by synthetic EventSub tests, not yet by a physical browser or a live third-party viewer.

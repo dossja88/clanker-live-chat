@@ -268,5 +268,41 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.match($late('brainMessage').textContent,/reply cancelled/);
   console.log('PASS rejected late model response cannot re-log forgotten handle');
 
+
+  // Forgetting after a completed live response must also clear the persisted last
+  // utterance and current on-screen/voice output; old backups have no attribution.
+  const completed=boot(true,'viewerDone');
+  const $done=await queuedLive(completed,'viewerDone','done1');
+  $done('provider').value='offline';
+  await $done('twitchReply').fire('click');
+  assert.match($done('speech').textContent,/viewerDone/);
+  assert.match(completed.localStorage.getItem('clanker.brain.v1'),/viewerDone/);
+  await $done('twitchForget').fire('click');
+  assert.doesNotMatch($done('speech').textContent,/viewerDone/);
+  assert.doesNotMatch(completed.localStorage.getItem('clanker.brain.v1'),/viewerDone/);
+  assert.match($done('speech').textContent,/Viewer data cleared locally/);
+  console.log('PASS completed live reply removed from saved last response after forget');
+
+  // A full simulator queue cannot starve a genuine selected Twitch viewer.
+  const fair=boot(true),$fair=fair.get;
+  $fair('twitchClient').value='clankerclient12345';$fair('twitchToken').value='fake-local-token';
+  await $fair('twitchManual').fire('click');
+  for(let i=0;i<12&&!fair.sockets.length;i++)await Promise.resolve();
+  await fair.sockets[0].deliver({metadata:{message_type:'session_welcome'},
+    payload:{session:{id:'fair-session',keepalive_timeout_seconds:30}}});
+  for(let i=0;i<17;i++){
+    $fair('viewer').value='LocalCrew';$fair('chat').value='Simulated request '+i;
+    await $fair('sendChat').fire('click');
+  }
+  assert.equal($fair('queue').textContent,'15 pending requests');
+  await fair.sockets[0].deliver(chatEvent('fair1','viewerFair','Clanker, is my message there?'));
+  assert.equal($fair('twitchCounts').textContent,'1 received · 1 selected');
+  $fair('viewer').value='LocalCrew';$fair('chat').value='One more offline request';
+  await $fair('sendChat').fire('click');
+  assert.equal($fair('queue').textContent,'16 pending requests');
+  await $fair('twitchReply').fire('click');
+  assert.match($fair('speech').textContent,/viewerFair/);
+  assert.equal($fair('queue').textContent,'15 pending requests');
+  console.log('PASS live viewer survives saturated simulator queue and new offline inputs');
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

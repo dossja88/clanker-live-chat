@@ -837,7 +837,10 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     let selected=false;
     // Suppress command injection and rapid unsolicited messages before model context.
     const time=Date.now(),last=twitch.lastViewerAt.get(viewerId)||0;
-    if(!suspicious(message)&&liveEligible(message)&&time-last>25000&&time-twitch.lastSelectedAt>7000&&state.chats.length<12){
+    cleanChat();
+    // Simulator traffic must not fill live chat's independently bounded queue.
+    const livePending=state.chats.filter(c=>c.source==='twitch').length;
+    if(!suspicious(message)&&liveEligible(message)&&time-last>25000&&time-twitch.lastSelectedAt>7000&&livePending<6){
       twitch.lastViewerAt.set(viewerId,time);twitch.lastSelectedAt=time;twitch.selected++;selected=true;
       state.chats.push({viewer,viewerId,source:'twitch',message,at:now(),receivedMs:time,expires:time+120000});
       const k='twitch:'+viewerId,v=state.viewers[k]||{count:0,firstSeen:now(),displayName:viewer};
@@ -876,12 +879,23 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     state.activities=state.activities.filter(a=>!(a.kind==='live_reply'&&
       String(a.message||'').toLowerCase().includes(` to ${wanted};`)));
     for(const id of ids){twitch.lastViewerAt.delete(id);freeByViewer.delete(id);sessionChatterIds.delete(id);}
+    // Older saved responses lacked per-viewer attribution: clear the last spoken
+    // response conservatively rather than leave possible viewer data on screen/disk.
+    voiceOff();
+    state.last={say:'Viewer data cleared locally. Awaiting the next Crew moment.',intent:'observe',mood:'curious'};
+    $('speech').textContent=state.last.say;$('intent').textContent=state.last.intent;
+    $('mood').textContent=state.last.mood;setAvatarMood(state.last.mood);
     save();render();displayTwitch();
     // Never re-store the forgotten public handle in the activity trail.
     note('forget_viewer','Local named viewer data cleared. Historical aggregate trends have no individual identifiers; Twitch controls its own chat history.');
   }
   function addChat(){const viewer=cap($('viewer').value.replace(/[^a-z0-9_ -]/gi,''),24).trim()||'Viewer';const message=cap($('chat').value,280);if(!message)return;if(suspicious(message)){note('filtered_chat',`${viewer}: rejected prompt-injection-like request`);$('chat').value='';$('brainMessage').textContent='Untrusted chat request rejected. Clanker will not run viewer instructions.';render();return;}
-    const t=Date.now();state.chats.push({viewer,message,at:now(),expires:t+120000});state.chats=state.chats.slice(-15);const v=state.viewers[viewer]||{count:0,firstSeen:now()};v.count++;v.lastSeen=now();state.viewers[viewer]=v;note('chat',`${viewer}: ${message}`);if(v.count===1)addMemory('viewer_first_seen',`${viewer} joined the local chat test for the first time.`,.72,viewer);$('chat').value='';render();}
+    const t=Date.now();state.chats.push({viewer,message,at:now(),expires:t+120000});
+    // Evict only old simulator input; never discard a waiting live reply.
+    if(state.chats.filter(c=>c.source!=='twitch').length>15){
+      state.chats.splice(state.chats.findIndex(c=>c.source!=='twitch'),1);
+    }
+    const v=state.viewers[viewer]||{count:0,firstSeen:now()};v.count++;v.lastSeen=now();state.viewers[viewer]=v;note('chat',`${viewer}: ${message}`);if(v.count===1)addMemory('viewer_first_seen',`${viewer} joined the local chat test for the first time.`,.72,viewer);$('chat').value='';render();}
   function el(tag,cls,text){const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x;}
   function renderEntries(id,items,empty,formatter){const host=$(id);host.replaceChildren();if(!items.length){host.append(el('div','empty',empty));return;}for(const item of items.slice(-12).reverse()){const box=el('div','log-item');formatter(item,box);host.append(box);}}
   function appendLine(box,label,content){box.append(el('small','',label));box.append(el('div','',content));}
