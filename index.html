@@ -602,19 +602,9 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
 
   // 2048 puzzle study has no game controls and never mutates the simulator.
   const PUZZLE_SCHEMA='clanker.2048.board.v1';
+  /* CLANKER2048_HEADLESS_CORE_BEGIN */
+  const Clanker2048Core=(()=>{
   const PUZZLE_DIRECTIONS=['left','down','up','right'];
-  function parse2048Board(data){
-    if(!data||typeof data!=='object'||Array.isArray(data)||
-      Object.keys(data).length!==2||!Object.hasOwn(data,'schema')||!Object.hasOwn(data,'board')||
-      data.schema!==PUZZLE_SCHEMA)throw Error('Expected exactly schema and board.');
-    if(!Array.isArray(data.board)||data.board.length!==4||
-       data.board.some(r=>!Array.isArray(r)||r.length!==4))throw Error('Board must be 4 by 4.');
-    for(const row of data.board)for(const v of row){
-      if(!Number.isSafeInteger(v)||v<0||v>131072||(v!==0&&(v&(v-1))!==0))
-        throw Error('Tiles must be zero or powers of two up to 131072.');
-    }
-    return data.board.map(r=>r.slice());
-  }
   function slide2048(board,dir){
     if(!PUZZLE_DIRECTIONS.includes(dir))throw Error('Unknown direction.');
     const after=board.map(r=>r.slice());let mergePoints=0;
@@ -632,6 +622,151 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     }
     return {direction:dir,legal:after.some((r,i)=>r.some((v,j)=>v!==board[i][j])),
       board:after,merge_points:mergePoints};
+  }
+
+  function empty2048Spaces(board){
+    const spaces=[];for(let r=0;r<4;r++)for(let c=0;c<4;c++)if(board[r][c]===0)spaces.push([r,c]);
+    return spaces;
+  }
+
+  function spawnLocal2048Tile(board,random=Math.random){
+    const empty=empty2048Spaces(board);if(!empty.length)return false;
+    const n=empty[Math.floor(random()*empty.length)];
+    const tile=random()<.9?2:4;board[n[0]][n[1]]=tile;
+    return {row:n[0],column:n[1],value:tile};
+  }
+
+  function hasLocal2048Move(board){
+    return PUZZLE_DIRECTIONS.some(direction=>slide2048(board,direction).legal);
+  }
+
+  const LOCAL2048_SNAKE_WEIGHTS=Array.from({length:16},(_,i)=>Math.pow(.8,i));
+  const LOCAL2048_SNAKES=(()=>{
+    const paths=[];
+    for(let orientation=0;orientation<2;orientation++)
+      for(let flipRow=0;flipRow<2;flipRow++)
+        for(let flipCol=0;flipCol<2;flipCol++){
+          const path=[];
+          for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+            const row=flipRow?3-i:i;
+            const col=flipCol?(i%2?j:3-j):(i%2?3-j:j);
+            path.push(orientation?[col,row]:[row,col]);
+          }
+          paths.push(path);
+        }
+    return paths;
+  })();
+  function rateLocal2048(board){
+    const values=board.flat(),empty=values.filter(v=>v===0).length;
+    const max=Math.max(...values),corners=[board[0][0],board[0][3],board[3][0],board[3][3]];
+    let smoothness=0;
+    for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+      if(c<3&&board[r][c]&&board[r][c+1])
+        smoothness-=Math.abs(Math.log2(board[r][c])-Math.log2(board[r][c+1]))*2;
+      if(r<3&&board[r][c]&&board[r+1][c])
+        smoothness-=Math.abs(Math.log2(board[r][c])-Math.log2(board[r+1][c]))*2;
+    }
+    let snakeBest=-Infinity;
+    for(const path of LOCAL2048_SNAKES){
+      let position=0;
+      for(let i=0;i<16;i++){
+        const [r,c]=path[i];
+        position+=board[r][c]*LOCAL2048_SNAKE_WEIGHTS[i];
+      }
+      snakeBest=Math.max(snakeBest,position);
+    }
+    return 110*empty+(corners.includes(max)?120:0)+smoothness+4*snakeBest;
+  }
+
+  function scoreAfterChance2048(board){
+    const spaces=empty2048Spaces(board);
+    if(!spaces.length)return hasLocal2048Move(board)?rateLocal2048(board):-100000;
+    let weighted=0;
+    for(const [r,c] of spaces){
+      for(const tile of [2,4]){
+        const spawn=board.map(row=>row.slice());spawn[r][c]=tile;
+        let best=-100000;
+        for(const dir of PUZZLE_DIRECTIONS){
+          const move=slide2048(spawn,dir);
+          if(move.legal)best=Math.max(best,rateLocal2048(move.board)+move.merge_points*.5);
+        }
+        weighted+=(tile===2?.9:.1)*best/spaces.length;
+      }
+    }
+    return weighted;
+  }
+
+  function chooseLocal2048Action(board,advice='none'){
+    const options=PUZZLE_DIRECTIONS.map(direction=>slide2048(board,direction))
+      .filter(m=>m.legal)
+      .map(m=>({direction:m.direction,quality:rateLocal2048(m.board)+m.merge_points*.7+
+        scoreAfterChance2048(m.board)*.45}));
+    options.sort((a,b)=>b.quality-a.quality||
+      PUZZLE_DIRECTIONS.indexOf(a.direction)-PUZZLE_DIRECTIONS.indexOf(b.direction));
+    const lead=options[0]||null,suggestion=options.find(o=>o.direction===advice);
+    return suggestion&&lead&&suggestion.quality>=lead.quality-15?suggestion:lead;
+  }
+
+  function createGame(random=Math.random){
+    const board=Array.from({length:4},()=>[0,0,0,0]);
+    const first=spawnLocal2048Tile(board,random),second=spawnLocal2048Tile(board,random);
+    return {game:{board,score:0,turns:0,status:'playing'},spawns:[first,second]};
+  }
+  function assertGame(game){
+    if(!game||typeof game!=='object'||Array.isArray(game)||
+      Object.keys(game).sort().join(',')!=='board,score,status,turns'||
+      !Number.isSafeInteger(game.score)||game.score<0||game.score>1000000000||
+      !Number.isSafeInteger(game.turns)||game.turns<0||game.turns>100000||
+      !['playing','won','lost'].includes(game.status))throw Error('Invalid game checkpoint.');
+    if(!Array.isArray(game.board)||game.board.length!==4||
+      game.board.some(row=>!Array.isArray(row)||row.length!==4||
+        row.some(tile=>!Number.isSafeInteger(tile)||tile<0||tile>131072||
+          tile!==0&&(tile&(tile-1))!==0)))throw Error('Invalid 2048 checkpoint board.');
+    const highest=Math.max(...game.board.flat()),hasMoves=hasLocal2048Move(game.board);
+    if(game.status==='won'&&highest<2048||
+       game.status==='lost'&&hasMoves||
+       game.status==='playing'&&(highest>=2048||!hasMoves))
+      throw Error('Contradictory 2048 checkpoint status.');
+    return {board:game.board.map(row=>row.slice()),score:game.score,turns:game.turns,status:game.status};
+  }
+  function advanceGame(checkpoint,direction,random=Math.random){
+    const game=assertGame(checkpoint);
+    if(game.status!=='playing')return {changed:false,game};
+    const move=slide2048(game.board,direction);
+    if(!move.legal)return {changed:false,game};
+    const previousHigh=Math.max(...game.board.flat());
+    game.board=move.board;game.score+=move.merge_points;game.turns++;
+    const spawn=spawnLocal2048Tile(game.board,random);
+    const highest_tile=Math.max(...game.board.flat());
+    game.status=highest_tile>=2048?'won':!hasLocal2048Move(game.board)?'lost':'playing';
+    return {changed:true,game,direction,merge_points:move.merge_points,
+      spawn,previousHigh,highest_tile,open_spaces:empty2048Spaces(game.board).length};
+  }
+  function seededRng(seed){
+    if(!Number.isSafeInteger(seed)||seed<0||seed>4294967295)throw Error('Invalid seed.');
+    let state=seed>>>0;
+    const next=()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/4294967296);
+    next.checkpoint=()=>state;
+    return next;
+  }
+  return Object.freeze({PUZZLE_DIRECTIONS,slide2048,empty2048Spaces,spawnLocal2048Tile,
+    hasLocal2048Move,rateLocal2048,scoreAfterChance2048,chooseLocal2048Action,
+    createGame,assertGame,advanceGame,seededRng});
+  })();
+  /* CLANKER2048_HEADLESS_CORE_END */
+  const {PUZZLE_DIRECTIONS,slide2048,empty2048Spaces,hasLocal2048Move,
+    rateLocal2048,scoreAfterChance2048,chooseLocal2048Action}=Clanker2048Core;
+  function parse2048Board(data){
+    if(!data||typeof data!=='object'||Array.isArray(data)||
+      Object.keys(data).length!==2||!Object.hasOwn(data,'schema')||!Object.hasOwn(data,'board')||
+      data.schema!==PUZZLE_SCHEMA)throw Error('Expected exactly schema and board.');
+    if(!Array.isArray(data.board)||data.board.length!==4||
+       data.board.some(r=>!Array.isArray(r)||r.length!==4))throw Error('Board must be 4 by 4.');
+    for(const row of data.board)for(const v of row){
+      if(!Number.isSafeInteger(v)||v<0||v>131072||(v!==0&&(v&(v-1))!==0))
+        throw Error('Tiles must be zero or powers of two up to 131072.');
+    }
+    return data.board.map(r=>r.slice());
   }
   function study2048(board,advice){
     const maxTile=Math.max(...board.flat());
@@ -769,19 +904,6 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
     $('play2048Status').textContent=reason;
     emitStageSnapshot();
   }
-  function empty2048Spaces(board){
-    const spaces=[];for(let r=0;r<4;r++)for(let c=0;c<4;c++)if(board[r][c]===0)spaces.push([r,c]);
-    return spaces;
-  }
-  function spawnLocal2048Tile(board){
-    const empty=empty2048Spaces(board);if(!empty.length)return false;
-    const n=empty[Math.floor(Math.random()*empty.length)];
-    const tile=Math.random()<.9?2:4;board[n[0]][n[1]]=tile;
-    return {row:n[0],column:n[1],value:tile};
-  }
-  function hasLocal2048Move(board){
-    return PUZZLE_DIRECTIONS.some(direction=>slide2048(board,direction).legal);
-  }
   function renderLocal2048(){
     const root=$('play2048Board');root.replaceChildren();
     if(!local2048){root.setAttribute('aria-label','No game started');return;}
@@ -859,9 +981,9 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   }
   function newLocal2048(){
     stopLocal2048('New local board ready. Autoplay is OFF.');
-    const board=Array.from({length:4},()=>[0,0,0,0]);
-    const first=spawnLocal2048Tile(board),second=spawnLocal2048Tile(board);
-    local2048={board,score:0,turns:0,status:'playing'};
+    const started=Clanker2048Core.createGame();
+    const board=started.game.board,[first,second]=started.spawns;
+    local2048=started.game;
     clearLive2048Votes();
     local2048History=[];local2048ReplayIndex=-1;local2048HistoryTruncated=false;
     local2048SessionAt=now();
@@ -873,87 +995,20 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
   }
   // Empirically compared against the previous heuristic on separate seeded batches.
   // This values high tiles ordered along a corner-origin snake, but does not lock any direction.
-  const LOCAL2048_SNAKE_WEIGHTS=Array.from({length:16},(_,i)=>Math.pow(.8,i));
-  const LOCAL2048_SNAKES=(()=>{
-    const paths=[];
-    for(let orientation=0;orientation<2;orientation++)
-      for(let flipRow=0;flipRow<2;flipRow++)
-        for(let flipCol=0;flipCol<2;flipCol++){
-          const path=[];
-          for(let i=0;i<4;i++)for(let j=0;j<4;j++){
-            const row=flipRow?3-i:i;
-            const col=flipCol?(i%2?j:3-j):(i%2?3-j:j);
-            path.push(orientation?[col,row]:[row,col]);
-          }
-          paths.push(path);
-        }
-    return paths;
-  })();
-  function rateLocal2048(board){
-    const values=board.flat(),empty=values.filter(v=>v===0).length;
-    const max=Math.max(...values),corners=[board[0][0],board[0][3],board[3][0],board[3][3]];
-    let smoothness=0;
-    for(let r=0;r<4;r++)for(let c=0;c<4;c++){
-      if(c<3&&board[r][c]&&board[r][c+1])
-        smoothness-=Math.abs(Math.log2(board[r][c])-Math.log2(board[r][c+1]))*2;
-      if(r<3&&board[r][c]&&board[r+1][c])
-        smoothness-=Math.abs(Math.log2(board[r][c])-Math.log2(board[r+1][c]))*2;
-    }
-    let snakeBest=-Infinity;
-    for(const path of LOCAL2048_SNAKES){
-      let position=0;
-      for(let i=0;i<16;i++){
-        const [r,c]=path[i];
-        position+=board[r][c]*LOCAL2048_SNAKE_WEIGHTS[i];
-      }
-      snakeBest=Math.max(snakeBest,position);
-    }
-    return 110*empty+(corners.includes(max)?120:0)+smoothness+4*snakeBest;
-  }
-  function scoreAfterChance2048(board){
-    const spaces=empty2048Spaces(board);
-    if(!spaces.length)return hasLocal2048Move(board)?rateLocal2048(board):-100000;
-    let weighted=0;
-    for(const [r,c] of spaces){
-      for(const tile of [2,4]){
-        const spawn=board.map(row=>row.slice());spawn[r][c]=tile;
-        let best=-100000;
-        for(const dir of PUZZLE_DIRECTIONS){
-          const move=slide2048(spawn,dir);
-          if(move.legal)best=Math.max(best,rateLocal2048(move.board)+move.merge_points*.5);
-        }
-        weighted+=(tile===2?.9:.1)*best/spaces.length;
-      }
-    }
-    return weighted;
-  }
-  function chooseLocal2048Action(board,advice='none'){
-    const options=PUZZLE_DIRECTIONS.map(direction=>slide2048(board,direction))
-      .filter(m=>m.legal)
-      .map(m=>({direction:m.direction,quality:rateLocal2048(m.board)+m.merge_points*.7+
-        scoreAfterChance2048(m.board)*.45}));
-    options.sort((a,b)=>b.quality-a.quality||
-      PUZZLE_DIRECTIONS.indexOf(a.direction)-PUZZLE_DIRECTIONS.indexOf(b.direction));
-    const lead=options[0]||null,suggestion=options.find(o=>o.direction===advice);
-    return suggestion&&lead&&suggestion.quality>=lead.quality-15?suggestion:lead;
-  }
   function moveLocal2048(direction,source='Clanker'){
     if(!local2048||local2048.status!=='playing')return false;
     if(document.hidden){stopLocal2048('Browser tab hidden: game paused safely.');return false;}
-    const move=slide2048(local2048.board,direction);
-    if(!move.legal)return false;
-    const previousHigh=Math.max(...local2048.board.flat());
-    local2048.board=move.board;local2048.score+=move.merge_points;local2048.turns++;
-    // A successful real move receives its own random tile, unlike the observation lab.
-    const spawned=spawnLocal2048Tile(local2048.board);
-    const max=Math.max(...local2048.board.flat());
+    const result=Clanker2048Core.advanceGame(local2048,direction);
+    if(!result.changed)return false;
+    local2048=result.game;
+    const previousHigh=result.previousHigh,spawned=result.spawn,max=result.highest_tile;
     if(max>=2048){local2048.status='won';stopLocal2048('2048 reached! Local game won; autoplay stopped.');}
     else if(!hasLocal2048Move(local2048.board)){
       local2048.status='lost';stopLocal2048('No legal moves remain; local game over.');
     }else $('play2048Status').textContent=source+' moved '+direction+'. Local game active'+
       (local2048Timer!==null?' · autoplay ON.':' · autoplay OFF.');
     renderLocal2048();
-    const entry={source,direction,merge_points:move.merge_points,spawn:spawned,
+    const entry={source,direction,merge_points:result.merge_points,spawn:spawned,
       highest_tile:max,open_spaces:empty2048Spaces(local2048.board).length};
     recordLocal2048Frame(entry);
     const event=local2048Milestone({turn:local2048.turns,score:local2048.score,...entry},previousHigh);

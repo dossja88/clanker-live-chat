@@ -98,3 +98,11 @@ Autonomy means reliable **approved** operation, not universal access, unsupervis
 - Twitch video ingest/encoder requirements: https://dev.twitch.tv/docs/video-broadcast/
 - Cloudflare Workers Free CPU limits: https://developers.cloudflare.com/workers/platform/limits/
 - Google Cloud Free Tier billing prerequisites: https://docs.cloud.google.com/free/docs/free-cloud-features
+
+## Phase A implementation notes: headless pure game core (2026-10-21)
+
+The reusable `src/2048-core.cjs` defines `createGame(random)`, `advanceGame(checkpoint, direction, random)`, `assertGame(checkpoint)`, `seededRng(seed)` (including a serializable `checkpoint()` of deterministic RNG state), `chooseLocal2048Action()`, and the original pure movement/scoring functions. Board and score transition return new state rather than changing the caller's object. The Core applies only Clanker's own approved **local 2048**, not a publisher game or general-purpose external automation. Invalid checkpoint shapes, contradiction of game status, out-of-range tiles and illegal directions fail closed.
+
+**Offline single-file compatibility:** The browser continues to include the *same marked module code inline*, checked byte-for-byte against `src/2048-core.cjs` by the regression runner. This is intentional code embedding instead of a second independent algorithm. `scripts/sync-2048-core.cjs` has a default compare-only mode and a separately explicit `--write` path. The browser adapter consumes the shared `createGame/advanceGame` methods and keeps UI, owner STOP, voice and history separately.
+
+The headless CLI `scripts/run-headless2048.cjs` is **manual and bounded**, not a daemon. The next part of Phase A/B is a bounded session coordinator that can consume these serializable board/PRNG checkpoints, prove fail-closed recovery, enforce owner STOP across restarts and later integrate an actual approved game and rendering host. Do not mistake a single manual CLI run or deterministic local puzzle victory for 24/7 cloud autonomy.

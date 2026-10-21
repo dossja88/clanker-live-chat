@@ -117,3 +117,21 @@ The source Brain Lab must remain active and visible; a hidden source tab may sto
 **This browser lab and clean stage are not the final operating architecture.** The finished Clanker should run approved gaming sessions, make decisions, remember safely, interact with The Crew, speak/render and recover from routine failures **without depending on a running Xbox, Android tab or owner's PC**. Those devices should be optional remote dashboards/owner emergency controls. A PC remains an acceptable temporary fallback for approved testing, not a required production host. The source engine and supervisor should evolve into a headless portable runtime, with a separate privacy-safe display/render/audio layer and—only under distinct Twitch/publisher/owner authorization—an encoder for a public stream.
 
 This is a forward architecture decision, **not an existing cloud deployment or an authorization to broadcast**. Preserve $0 additional recurring cost, billing-disabled, receive-only Twitch, private viewer data, original v2.5 portrait and nine faces, existing local browser testing and safe owner approval gates. A permanent cloud video encoder may not be possible on a genuinely no-billing free tier; do not assume otherwise. See the phased [cloud-first autonomy architecture](docs/CLOUD_AUTONOMY_PLAN.md) for components, acceptance evidence and hosting tradeoffs. Current live implementation status remains in [`docs/PROJECT_HANDOFF.md`](docs/PROJECT_HANDOFF.md).
+
+## Headless reusable 2048 engine — first cloud-independent game component (2026-10-21)
+
+Clanker's actual local 2048 rules, tile spawning, chance-aware strategy, checkpoint validation and deterministic step logic now live in [`src/2048-core.cjs`](src/2048-core.cjs), **without any `window`, `document`, Twitch, model, network or host-game dependency**. The existing `index.html` still includes an *exact synchronized inlined copy* of the module to preserve its original downloadable, single-file, offline browser behavior. Its own game buttons now call `Clanker2048Core.createGame()` and `Clanker2048Core.advanceGame()` rather than maintaining a parallel second game implementation. The read-only manual observation lab shares pure slides but never actuates a real external game.
+
+For a future Node/cloud worker, a **manual, bounded** CLI proof runs without a graphical browser:
+
+```sh
+node scripts/run-headless2048.cjs --seed=1 --moves=1024
+node scripts/run-headless2048.cjs --seed=1 --moves=1024 --json
+node tests/headless2048.cjs
+node tests/regression.cjs
+node tests/benchmark2048.cjs
+```
+
+The CLI has a strict 1–1024 turn bound per invocation, runs only Clanker's own independent 2048 rules, and sends **no** network requests, Twitch chat, game inputs, video or audio. JSON output includes game tiles, score and a game/seeded-PRNG checkpoint but **no account, private viewer or API fields**. The headless game test validates pure game state, illegal move fail-closed behavior, seed reproducibility, and identical outcomes after serializing/restoring both the board and PRNG state. A seeded 1024-turn run reached the 2048 tile on **turn 1019, score 20792** in the isolated JavaScript test harness; this is a test of a local puzzle, not external play or a real Node process.
+
+For maintenance, **edit only `src/2048-core.cjs`'s marked engine block**. Then update the offline browser copy explicitly with `node scripts/sync-2048-core.cjs --write` and run `node scripts/sync-2048-core.cjs` to check exact parity. `tests/regression.cjs` additionally fails if the two copies diverge. No new dependencies, scheduling, accounts, billing, permissions, or cloud deployment. This is **Phase A groundwork**, not yet a persistent autonomous session supervisor. The canonical milestone status is in `docs/PROJECT_HANDOFF.md`.

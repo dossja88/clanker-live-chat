@@ -6,6 +6,15 @@ const path=require('node:path');
 const vm=require('node:vm');
 const html=fs.readFileSync(path.resolve(__dirname,'..','index.html'),'utf8');
 const stageHtml=fs.readFileSync(path.resolve(__dirname,'..','stage.html'),'utf8');
+const headlessSource=fs.readFileSync(path.resolve(__dirname,'..','src','2048-core.cjs'),'utf8');
+const coreBlock=/  \/\* CLANKER2048_HEADLESS_CORE_BEGIN \*\/[\s\S]*?  \/\* CLANKER2048_HEADLESS_CORE_END \*\//;
+assert.ok(coreBlock.test(html)&&coreBlock.test(headlessSource),'Headless core marker missing');
+assert.equal(html.match(coreBlock)[0],headlessSource.match(coreBlock)[0],
+  'Embedded offline-browser 2048 core must exactly match the headless Node module');
+new vm.Script(headlessSource,{filename:'src/2048-core.cjs'});
+const Headless2048=require('../src/2048-core.cjs');
+assert.ok(Object.isFrozen(Headless2048));
+console.log('PASS browser and headless 2048 engine source exactly synchronized');
 const stageMatch=stageHtml.match(/<script>([\s\S]*?)<\/script>/);
 assert.ok(stageMatch,'Clean stage should have exactly one inline renderer script');
 new vm.Script(stageMatch[1],{filename:'stage.html:inline'});
@@ -939,6 +948,22 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.equal(stageChannels[0].posts.length,1);
   assert.equal(stageIntervals.length,1);
   console.log('PASS isolated clean stage validates payloads, uses text rendering and has no control path');
+
+  // The local browser adapter must call the same pure headless module.
+  const engineRng=Headless2048.seededRng(1);
+  let engineState=Headless2048.createGame(engineRng).game;
+  while(engineState.status==='playing'&&engineState.turns<1024){
+    const suggestion=Headless2048.chooseLocal2048Action(engineState.board,'none');
+    assert.ok(suggestion);
+    const outcome=Headless2048.advanceGame(engineState,suggestion.direction,engineRng);
+    assert.equal(outcome.changed,true);
+    engineState=outcome.game;
+  }
+  assert.equal(engineState.status,'won');
+  assert.equal(engineState.turns,1019);
+  assert.equal(Number($m('play2048Score').textContent),engineState.score);
+  assert.equal(Number($m('play2048High').textContent),Math.max(...engineState.board.flat()));
+  console.log('PASS seeded in-page real moves match headless Node core score and 2048 win');
 
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});
