@@ -20,7 +20,16 @@ class Element{
   constructor(id='',tag='div'){
     this.id=id;this.tagName=tag.toUpperCase();this.textContent='';this.value='';this.checked=false;
     this.disabled=false;this.dataset={};this.style={};this.children=[];this.events={};this.attributes={};
-    this.classList={add(){},remove(){},toggle(){return false},contains(){return false}};
+    const classes=new Set();
+    this.classList={
+      add:(...names)=>names.forEach(name=>classes.add(name)),
+      remove:(...names)=>names.forEach(name=>classes.delete(name)),
+      toggle:(name,force)=>{if(force===true){classes.add(name);return true;}
+        if(force===false){classes.delete(name);return false;}
+        if(classes.has(name)){classes.delete(name);return false;}
+        classes.add(name);return true;},
+      contains:name=>classes.has(name)
+    };
   }
   addEventListener(n,f){(this.events[n]??=[]).push(f);}
   async fire(n){for(const fn of this.events[n]??[])await fn({target:this,type:n,preventDefault(){}});}
@@ -99,6 +108,9 @@ function boot(network=false,forgetName=null,geminiResponder=null,puzzleSeed=null
     alert(){},confirm:()=>false,prompt:()=>forgetName,console};
   vm.runInNewContext(script,context,{timeout:2500,filename:'index.html:inline'});
   return {get,calls,sockets,localStorage:context.localStorage,downloads,
+    body:document.body,
+    fireDocumentEvent:async(type,data={})=>{for(const handler of documentEvents[type]||[])
+      await handler(data);},
     advanceClock:delta=>{if(clockValue!==null)clockValue+=delta;},
     tickIntervals:async()=>{for(const {fn} of [...intervals.values()])await fn();},
     getIntervalCount:()=>intervals.size,setHidden:v=>{document.hidden=Boolean(v);
@@ -678,6 +690,8 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.equal($m('play2048Turns').textContent,'1019');
   assert.match($m('play2048Status').textContent,/won/);
   assert.match($m('play2048Commentary').textContent,/reached 2048/);
+  assert.equal($m('play2048Narrate').checked,false);
+  assert.match($m('avatarStatus').textContent,/Face: happy/);
   assert.equal($m('play2048Budget').disabled,false);
   assert.equal(marathon.calls.length,0);
   console.log('PASS seeded real local 2048 autoplay wins under explicit 1024-move budget');
@@ -776,6 +790,71 @@ function chatEvent(id,who,text,channel='broadcaster'){
   assert.equal($vr('play2048Turns').textContent,'1');
   assert.equal(voteReset.calls.length,0);
   console.log('PASS local game remains independently playable with Crew disconnected');
+
+
+  // Dedicated visible-stage mode does not initiate an automatic run, broadcast,
+  // or expose a new control permission. The original portrait is reused in place.
+  const scene=boot(),$stage=scene.get;
+  assert.equal(scene.body.classList.contains('show-mode'),false);
+  assert.equal($stage('play2048Stage').getAttribute('aria-pressed'),null); // fake DOM does not hydrate static attributes
+  await $stage('play2048Stage').fire('click');
+  assert.equal(scene.body.classList.contains('show-mode'),true);
+  assert.equal($stage('play2048Stage').getAttribute('aria-pressed'),'true');
+  assert.match($stage('play2048StageStatus').textContent,/Nothing is broadcast/);
+  assert.equal($stage('play2048Turns').textContent,'');
+  assert.equal(scene.getIntervalCount(),0);
+  assert.equal(scene.calls.length,0);
+  await $stage('play2048New').fire('click');
+  await $stage('play2048Step').fire('click');
+  assert.equal($stage('play2048Turns').textContent,'1');
+  assert.equal(scene.body.classList.contains('show-mode'),true);
+  await scene.fireDocumentEvent('keydown',{key:'Escape'});
+  assert.equal(scene.body.classList.contains('show-mode'),false);
+  assert.equal($stage('play2048Stage').getAttribute('aria-pressed'),'false');
+  assert.equal($stage('play2048Turns').textContent,'1');
+  await $stage('play2048Stage').fire('click');
+  await $stage('play2048Stage').fire('click');
+  assert.equal(scene.body.classList.contains('show-mode'),false);
+  assert.equal(scene.calls.length,0);
+  console.log('PASS focused local performance view preserves gameplay and never starts a broadcast');
+
+  // Performance view is presentation only, not a substitute for the STOP guard.
+  await $stage('play2048Stage').fire('click');
+  await $stage('play2048Start').fire('click');
+  assert.equal(scene.getIntervalCount(),1);
+  await $stage('play2048Stop').fire('click');
+  assert.equal(scene.getIntervalCount(),0);
+  assert.match($stage('play2048Status').textContent,/STOP/);
+  assert.equal(scene.body.classList.contains('show-mode'),true);
+  await scene.fireDocumentEvent('keydown',{key:'Escape'});
+  assert.equal(scene.body.classList.contains('show-mode'),false);
+  assert.equal(scene.calls.length,0);
+  console.log('PASS performance view retains immediate STOP and Escape return path');
+
+  // Device timing is read-only and must never advance gameplay or start a timer.
+  const browserProbe=boot(),$probe=browserProbe.get;
+  const beforeProbe=browserProbe.localStorage.getItem('clanker.brain.v1');
+  await $probe('play2048DeviceCheck').fire('click');
+  assert.match($probe('play2048DeviceStatus').textContent,/3 read-only decisions/);
+  assert.equal($probe('play2048Turns').textContent,'');
+  assert.equal(browserProbe.getIntervalCount(),0);
+  assert.equal(browserProbe.calls.length,0);
+  await $probe('play2048New').fire('click');
+  await $probe('play2048Step').fire('click');
+  const liveBefore=$probe('play2048Board').children.map(c=>c.textContent).join(',');
+  const turnBefore=$probe('play2048Turns').textContent;
+  const scoreBefore=$probe('play2048Score').textContent;
+  await $probe('play2048DeviceCheck').fire('click');
+  assert.equal($probe('play2048Board').children.map(c=>c.textContent).join(','),liveBefore);
+  assert.equal($probe('play2048Turns').textContent,turnBefore);
+  assert.equal($probe('play2048Score').textContent,scoreBefore);
+  assert.equal(browserProbe.localStorage.getItem('clanker.brain.v1'),beforeProbe);
+  assert.equal(browserProbe.calls.length,0);
+  browserProbe.setHidden(true);
+  await $probe('play2048DeviceCheck').fire('click');
+  assert.match($probe('play2048DeviceStatus').textContent,/skipped/);
+  browserProbe.setHidden(false);
+  console.log('PASS browser device check times pure moves without changing game, storage or network');
 
   console.log('ALL REGRESSIONS PASSED (offline + mock transport; not live Twitch or browser TTS)');
 })().catch(error=>{console.error(error.stack??error);process.exitCode=1;});

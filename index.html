@@ -77,7 +77,43 @@
     @media(max-width:760px){.avatar{width:126px;height:auto;border-radius:12px}}
     @media(prefers-reduced-motion:reduce){.avatar,.avatar .clanker-sprite{transition:none!important;animation:none!important}}
 
-  </style>
+  
+    /* Operator-selected local gameplay focus. Hide setup/credentials; don't clone avatar. */
+    .show-only{display:none}
+    body.show-mode{background:#090f1a}
+    .show-mode .wrap{max-width:1380px;padding:16px}
+    .show-mode .wrap > header,.show-mode .wrap > .foot{display:none}
+    .show-mode .layout{display:block}
+    .show-mode .layout > aside{display:none}
+    .show-mode main.stack{display:grid;grid-template-columns:minmax(220px,340px) minmax(0,1fr);align-items:start;gap:14px}
+    .show-mode main.stack > :not(:first-child):not(#play2048Panel){display:none}
+    .show-mode main.stack > :first-child{grid-column:1;position:sticky;top:12px;text-align:center}
+    .show-mode main.stack > :first-child .hero{display:flex;flex-direction:column;align-items:center;gap:8px}
+    .show-mode main.stack > :first-child .hero-info,
+    .show-mode main.stack > :first-child .avatar-tools,
+    .show-mode main.stack > :first-child > .micro,
+    .show-mode main.stack > :first-child > h2,
+    .show-mode main.stack > :first-child > .speech,
+    .show-mode main.stack > :first-child > .controls,
+    .show-mode main.stack > :first-child > .outcome{display:none}
+    .show-mode .show-only{display:block}
+    .show-mode #avatar{width:min(100%,290px);max-width:290px;height:auto;aspect-ratio:148 / 122;margin:0 auto}
+    .show-mode #play2048Panel{grid-column:2;min-width:0}
+    .show-mode #play2048Panel > p.micro:not(#play2048Status):not(#play2048CrewStatus):not(#play2048DeviceStatus),
+    .show-mode #play2048Review{display:none}
+    .show-mode #play2048Board{max-width:550px !important;width:100%;margin:16px auto !important;gap:8px !important}
+    .show-mode #play2048Board > div{min-height:clamp(66px,11vh,112px) !important;font-size:clamp(1.3rem,3vw,2.2rem) !important}
+    .show-mode #play2048Commentary{font-size:1.02rem;padding:16px;line-height:1.55}
+    .show-mode #play2048Status{font-size:.94rem;color:var(--aqua)}
+    @media(max-width:760px){
+      .show-mode main.stack{grid-template-columns:1fr}
+      .show-mode main.stack > :first-child{grid-column:1;position:static}
+      .show-mode main.stack > :first-child .hero{flex-direction:row;justify-content:center}
+      .show-mode #avatar{width:min(55%,200px)}
+      .show-mode #play2048Panel{grid-column:1}
+      .show-mode #play2048Board > div{min-height:clamp(60px,14vw,92px) !important}
+    }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -92,6 +128,7 @@
           <div class="avatar" id="avatar" role="img" aria-label="Clanker portrait with neutral eyes; digital mouth hidden"><div class="clanker-sprite" id="avatarSprite"></div><div class="face-ui" id="avatarFace" aria-hidden="true"></div></div>
           <div class="hero-info"><div class="hero-title">Machine intelligence. Questionable judgment.</div><div class="hero-sub">Built to master games. Accidentally developed opinions about humans.</div><span class="tag">60% curious</span><span class="tag">25% confident</span><span class="tag">15% deadpan</span></div>
         </div>
+        <p class="show-only" style="color:var(--aqua);font-weight:800;letter-spacing:.08em">CLANKER // LOCAL 2048 PERFORMANCE</p>
         <div class="avatar-tools"><span class="avatar-status" id="avatarStatus">Face: idle · mouth hidden</span><label for="avatarPreview" class="micro">Preview</label><select id="avatarPreview" aria-label="Preview face expression"><option value="auto">Follow Clanker</option><option value="idle">Idle</option><option value="talking">Talking</option><option value="happy">Happy</option><option value="smug">Smug</option><option value="confused">Confused</option><option value="surprised">Surprised</option><option value="panic">Panic</option><option value="deadpan">Deadpan</option><option value="glitch">Glitch</option></select><button id="avatarSpeakTest" type="button">Test voice + mouth</button></div>
         <p class="micro">Reactive portrait from Clanker’s master reference. His mouth stays hidden at idle; voice playback and AI mood change his face. Speech animation reflects speaking state, not phoneme-accurate lip sync.</p>
         <h2 style="margin-top:10px">CLANKER SAYS</h2>
@@ -133,6 +170,11 @@
       </section>
       <section class="panel" id="play2048Panel">
         <div class="subline"><h2>CLANKER PLAYS 2048</h2><span class="count">SELF-CONTAINED BROWSER GAME</span></div>
+        <div class="row" style="margin-bottom:10px">
+          <button type="button" id="play2048Stage" aria-pressed="false">Performance view</button>
+          <button type="button" id="play2048DeviceCheck">Check this browser</button>
+          <span class="micro" id="play2048StageStatus" role="status">Standard lab view. Performance mode never starts a stream.</span>
+        </div>
         <p class="micro">An actual playable local 2048-style puzzle board in this browser tab. Clanker observes its tiles, chooses a legal direction and moves the board. No external game website, account, Twitch action, or hardware controller is touched. Autoplay starts only when you explicitly press Start. Choose a bounded 128-, 512-, or 1,024-move session; STOP, tab hiding and win/loss still end the run.</p>
         <div class="row"><button type="button" id="play2048New" class="primary">New local game</button><button type="button" id="play2048Step">Clanker: one move</button></div>
         <div class="field" style="margin-top:10px"><label for="play2048Budget">Autoplay limit for the next explicit Start</label>
@@ -144,6 +186,7 @@
           <div class="tile"><div class="k">Actual moves</div><div class="v" id="play2048Turns">0</div></div>
         </div>
         <p id="play2048Status" class="micro" role="status" aria-live="polite">Off. Press New local game. No gameplay has occurred.</p>
+        <p id="play2048DeviceStatus" class="micro" role="status" aria-live="polite">Browser timing has not been measured. This check never plays a turn.</p>
         <div id="play2048Board" role="img" aria-label="No game started" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-width:320px;margin:10px 0"></div>
         <div class="row" aria-label="Manual local puzzle controls"><button type="button" id="play2048Up">↑</button><button type="button" id="play2048Left">←</button><button type="button" id="play2048Down">↓</button><button type="button" id="play2048Right">→</button></div>
         <div class="field" style="margin-top:12px"><label for="play2048Advice">Optional owner-entered Crew advice (not Twitch control)</label><select id="play2048Advice"><option value="none">Clanker decides</option><option value="left">Suggest left</option><option value="down">Suggest down</option><option value="up">Suggest up</option><option value="right">Suggest right</option></select></div>
@@ -784,10 +827,14 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       ' merge points. Highest tile '+entry.highest_tile+'.',mood:'curious',major:false};
   }
   function narrateLocal2048(event){
-    // Keep user-enabled game speech sparse and lower priority than live chat replies.
-    if(!event.major||!$('play2048Narrate').checked||!voiceEnabled||busy||activeLiveReply||document.hidden)return;
+    // Authentic local-game milestones update the existing v2.5 face even if muted.
+    // Do not override a Twitch/model reply or a currently playing support reaction.
+    if(!event.major||busy||activeLiveReply||document.hidden)return;
+    if(!avatarReaction)setAvatarMood(event.mood);
+    // Spoken narration remains separately opt-in and lower priority than chat speech.
+    if(!$('play2048Narrate').checked||!voiceEnabled||avatarReaction)return;
     if(speechQueue.length||activeSpeech)return;
-    setAvatarMood(event.mood);speak(event.say);
+    speak(event.say);
   }
   function newLocal2048(){
     stopLocal2048('New local board ready. Autoplay is OFF.');
@@ -949,6 +996,49 @@ OUTPUT: Return ONLY JSON object with keys say (string or null), intent ({action:
       a.href=url;a.download='clanker-local2048-'+new Date().toISOString().slice(0,10)+'.json';
       document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
     }catch(e){$('play2048ReplayStatus').textContent='Local export unavailable on this browser.';}
+  });
+  function setLocal2048Stage(enabled){
+    document.body.classList.toggle('show-mode',!!enabled);
+    $('play2048Stage').setAttribute('aria-pressed',enabled?'true':'false');
+    $('play2048Stage').textContent=enabled?'Exit performance view':'Performance view';
+    $('play2048StageStatus').textContent=enabled?
+      'Local performance view only. Nothing is broadcast; press Escape to return.':
+      'Standard lab view. Performance mode never starts a stream.';
+  }
+  $('play2048Stage').addEventListener('click',()=>setLocal2048Stage(
+    !document.body.classList.contains('show-mode')));
+  function checkLocal2048Browser(){
+    if(document.hidden){$('play2048DeviceStatus').textContent=
+      'Browser check skipped: the tab must be visible.';return;}
+    // Read-only timing of the exact action selection used in local gameplay.
+    const board=local2048?local2048.board.map(row=>row.slice()):
+      [[2,4,8,16],[0,2,4,8],[0,0,2,4],[0,0,0,2]];
+    const clock=()=>typeof performance!=='undefined'&&typeof performance.now==='function'?
+      performance.now():Date.now();
+    try{
+      const samples=[];
+      for(let i=0;i<3;i++){
+        const start=clock(),candidate=chooseLocal2048Action(board,'none');
+        const elapsed=Math.max(0,clock()-start);
+        if(candidate&&!slide2048(board,candidate.direction).legal)
+          throw Error('Puzzle planner proposed an illegal direction.');
+        samples.push(elapsed);
+      }
+      samples.sort((a,b)=>a-b);
+      const slowest=samples[2],median=samples[1];
+      $('play2048DeviceStatus').textContent='This browser: 3 read-only decisions; median '+
+        median.toFixed(1)+' ms, slowest '+slowest.toFixed(1)+
+        ' ms. No game turns executed, no network calls. Short CPU sample only; long-run stability, speech and Twitch still need separate verification.';
+    }catch(e){
+      $('play2048DeviceStatus').textContent='Local device check could not complete: '+
+        cap(e.message,120);
+    }
+  }
+  $('play2048DeviceCheck').addEventListener('click',checkLocal2048Browser);
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&document.body.classList.contains('show-mode')){
+      setLocal2048Stage(false);$('play2048Stage').focus();
+    }
   });
   $('play2048New').addEventListener('click',newLocal2048);
   $('play2048Step').addEventListener('click',()=>{if(local2048Timer===null)stepLocal2048();});
