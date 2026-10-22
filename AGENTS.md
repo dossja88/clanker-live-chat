@@ -1,5 +1,11 @@
 # AGENTS.md — Clanker AI operating rules
 
+## Jules PR feedback evidence gate — accepted pilot lesson (2026-10-22)
+
+- Four Jules-authored zero-file commits were independently verified across Clanker pilot PRs #2/#5. A reaction, new commit SHA, green baseline tests, or original commit message is **not proof of implementing review feedback**. When a review response arrives, compare exact before/after Git *trees* and changed code/test paths; optionally use `node scripts/check-agent-feedback-diff.cjs --before <reviewed-ref> --after <new-ref>` on a local checkout containing both commits. Exit 2 means NO_CHANGE and must be treated as unresolved, not retried repeatedly. See `docs/JULES_FEEDBACK_INCIDENT.md` for the public evidence.
+- On a first no-op, inspect existing Jules task activities, actual diff panel, staging/publishing output **within that same task** (when authenticated) instead of repeating identical `@jules` comments, changing branch ownership or spending a new task. Authenticated Jules activity is currently unavailable through connected tools; do not speculate that the issue was user settings, a missing webhook, or a specific internal Google bug. Avoid automatic merges or new CI; this check is optional and offline.
+
+
 
 ## Clanker coordination and Jules reuse — owner decision (2026-10-22)
 

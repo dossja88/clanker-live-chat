@@ -1,5 +1,12 @@
 # Jules collaboration and concurrency contract — Clanker pilot
 
+## Empty Jules feedback commits — diagnosis before retries
+
+A known pattern across both local Clanker pilots: Jules acknowledges PR comments but pushes a **new Git SHA with the same exact tree** (four zero-file commits). The first pilot additionally lost independent fixes when Jules republished its old tree. See the proof, provider reports, support packet and uncertainty boundary in `docs/JULES_FEEDBACK_INCIDENT.md`.
+
+When a response commit arrives, check a locally available reviewed SHA against the new SHA: `node scripts/check-agent-feedback-diff.cjs --before <reviewed> --after <candidate>`. Codes: 0 changed paths (still requires semantic review), 2 identical trees/no path changes (feedback not implemented), 1 invalid/non-descendant/error. Run `node tests/agent-feedback-diff.cjs` to verify its synthetic real-Git scenarios. If NO_CHANGE, don't repeat PR nudges; inspect the existing Jules session activity/diff and git staging/upload sequence in Jules (authenticated UI/API if already available) before deciding whether the provider can incorporate the change. Keep task/branch writer separation and preserve completed evidence; no paid plan, extra task or continuous monitor is authorized for diagnostics.
+
+
 ## Jules session utilization and coordination
 
 **Single coordination lane:** During the Clanker integration pilot, only one steward-coordinated GitHub workstream launches coding tasks or integrates changes at a time. Another ChatGPT/Codex/Gemini conversation may discuss or review, but must check `main`, the canonical handoff and current task/PR receipts before writable work. Keep one writer per feature branch.
