@@ -1,5 +1,26 @@
 # Jules collaboration and concurrency contract — Clanker pilot
 
+## Direct browser collaboration — verified operating procedure
+
+The 2026-10-22 diagnostic exchange in existing task `7200037830362515152` proved direct ChatGPT Work → Talk to Jules → Jules report retrieval without owner prompt/answer relay. It did **not** prove corrective coding or unattended orchestration. Evidence and limits: [JULES_FEEDBACK_INCIDENT.md](JULES_FEEDBACK_INCIDENT.md); current status remains in the canonical handoff.
+
+1. **Recover:** Read live main instructions/handoff and exact task/PR receipts. Confirm the task suits the original scope, current authorization, branch ownership and free-use limits. A closed superseded PR is diagnosis-only unless separately authorized; never recreate a job to repeat integrated fixes.
+2. **Send once:** Use an existing authenticated cloud-browser task. Include a unique receipt, reviewed SHA, complete non-sensitive review text, reproduction, expected behavior, allowed paths, and explicit action limits. A link or notification alone may omit the actual feedback. Never send secrets, private viewer records or credentials.
+3. **Wait and inspect:** Allow several minutes. Check the task's latest activity and **Ready for review / Commit message** cards, not only chat bubbles. In the verified exchange, Thinking ended before the delayed answer appeared. Its ending, the unchanged original diff count, or a short silent interval is not a failure gate. Do not send duplicate nudges while awaiting a response. There is no established SLA; record actual elapsed time where observable and leave an outstanding receipt for recovery if interrupted.
+4. **Read without publishing:** A diagnostic report may be displayed inside the disabled commit-message field with the original +536/-0. Read it there; do not press publish/View publish options to obtain an answer. Verify acknowledgement of the actual receipt and instructions, distinguishing declarations from observed commands and backend inference.
+5. **For separately authorized coding:** Require Jules's own scoped source/test changes, targeted and full applicable genuine Node results, local head/tree and nonempty diff before publication. Independently inspect the resulting GitHub head/tree, ancestry and semantic changes before accepting the response. A local/internal SHA may differ from exported GitHub SHA; compare content/tree rather than assuming identity.
+6. **Recover safely:** On continuation, inspect the outstanding receipt and remote head before sending another instruction. Stop repeated no-change submissions. Keep one writer per Jules branch and steward-owned canonical documentation. If the existing task cannot provide required evidence, preserve the unresolved state; no new task, permission or credential change is implied.
+
+### Reusable diagnostic message shape
+
+Use only within an authorized existing-task investigation; replace placeholders with verified public/task data:
+
+> Diagnostic receipt: <unique ID>. Task <existing ID>, PR <number>, reviewed GitHub HEAD <SHA>. Read the following exact question: <question/reproduction>. Acknowledge the receipt and restate the issue. Report available relevant tools and read-only Git status/head/tree/diff evidence if accessible. Label self-report, directly observed output, inference and unknown separately. Do not edit, stage, commit, push, publish, reopen PRs, create tasks or change accounts/settings. Respond in the task's normal report mechanism; no code publication is requested.
+
+For future authorized implementation, replace the diagnostic-only limits with that task's specifically authorized paths/actions and test acceptance. Do not reuse this template to grant authority that the owner has not provided.
+
+**Cost/automation boundary:** This reuses the existing signed-in browser and existing task; no API key, new service, recurring workflow or subscription was introduced. It saves owner prompt/answer transfers during active Work execution. No background worker, response-time guarantee, session persistence guarantee, or autonomous merge service is installed.
+
 ## PR feedback fallback — direct in-task message before accepting changes
 
 **Task-specific root-cause evidence:** In pilot #2's authenticated task chat, Jules stated that it received a generic PR-comment notification requesting `read_pr_comments`, **without the comment bodies**, and the named tool was **not available**. Its local repo stayed clean at `da9b938...`; three separate platform submissions left the GitHub PR at the same code tree. This is Jules's task-level self-report corroborated by remote no-change commits, not a generalized conclusion about all Jules installations. See `docs/JULES_FEEDBACK_INCIDENT.md`.
@@ -23,7 +44,7 @@ When a response commit arrives, check a locally available reviewed SHA against t
 **First pilot receipt:** https://jules.google.com/task/7194871727713726446 → original issue #1 and PR #2 (closed, unmerged); corrected implementation was integrated through PR #3. Jules's independent session state is **unverified** by the GitHub read connection. No new Jules task, scheduler, proactivity feature or fee is authorized merely by this documentation.
 
 
-**Scope:** This is a reusable execution/safety procedure for the single Jules task tied to GitHub issue #1 and PR #2. Canonical project decisions, permissions and current status remain in `AGENTS.md` and **only** `docs/PROJECT_HANDOFF.md`.
+**Scope:** Reusable execution/safety guidance derived from both Clanker pilots (issue #1/PR #2 and issue #4/PR #5) and the direct diagnostic exchange. Historical pilot receipts do not authorize new tasks. Canonical project decisions, permissions and current status remain in `AGENTS.md` and **only** `docs/PROJECT_HANDOFF.md`.
 
 ## Proven end-to-end components
 
@@ -31,7 +52,7 @@ When a response commit arrives, check a locally available reviewed SHA against t
 2. Jules produced an offline 2048 stage-protocol implementation, claimed Node test results, and opened PR #2 to `main`.
 3. A separate ChatGPT/GitHub reviewer identified an actual correctness flaw and tested the negative case against fetched source; a corrective patch `0ca6455` was committed directly to the Jules branch.
 4. Jules's later commit `e653639` **removed that corrective patch**, proving that mixed branch writers can lose changes, even without a force push. Do not infer that PR feedback was independently processed.
-5. The corrective commit is preserved on `review/clanker-stage-protocol-v1`. Neither branch was merged into `main`.
+5. The corrective commit is preserved on `review/clanker-stage-protocol-v1`. The original Jules PR #2 was closed unmerged; corrected reviewer-owned PR #3 was subsequently integrated as `e805ba3`. This list records the first pilot's history.
 
 ## Mandatory single-writer workflow
 

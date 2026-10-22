@@ -1,5 +1,14 @@
 # Clanker AI — canonical project handoff
 
+## Jules collaboration procedure consolidated (2026-10-22)
+
+- **Base:** `main` at `15b108a8c6862d7e4a07b49e38c639c6745a328a`. Updated the existing collaboration guide with the verified same-task send/wait/report-card/read-without-publication procedure, receipt-based interruption recovery and a reusable diagnostic message shape. Corrected its outdated first-pilot-only scope and pre-integration history wording.
+- **Factual instruction repair:** AGENTS now points to verified cloud-browser task-report access while retaining the limit on private backend/tool-registry evidence. No owner permission, command meaning, approval or publication boundary changed.
+- **Verification:** Documentation-only semantic review: preserved single-writer, exact-SHA/tree, nonempty source/test and real-Node acceptance rules; new instructions distinguish verified diagnostic messaging from untested corrective coding and unattended operation. No code tests or new Jules messages/runs were necessary. No browser/runtime, CI, credentials, permissions, cost or closed PR changes.
+- **Automation debt resolved in part:** Owner prompt/answer copy-and-paste is unnecessary while authenticated browser access and active Work execution remain available. Recovery checks the same receipt before nudging. Background orchestration and direct-chat code correction remain unverified.
+- **NEXT ACTION:** Investigation and reusable documentation milestone complete. A further implementation proof needs a separately scoped authorized coding assignment; current task remains preserved for diagnostics, and no new task may be created under this investigation. Product work remains the offline cursor/reconnect milestone in the accepted observer section below.
+
+
 ## Delayed Jules response — direct two-way diagnostics verified (2026-10-22)
 
 - **Corrected outcome:** Owner noted normal multi-minute Jules latency. After waiting without more messages, ChatGPT directly observed a diagnostic report acknowledging both A/B receipts in the existing task. The previous response-gate classification was premature; it is superseded by this result. No owner prompt/answer relay was needed.
