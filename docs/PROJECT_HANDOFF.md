@@ -1,5 +1,13 @@
 # Clanker AI — canonical project handoff
 
+## Coordinated Clanker pilot and Jules reuse — owner decision (2026-10-22)
+
+- **Owner preference:** Keep Clanker the controlled test case for GPT–Jules collaboration. Use one steward-coordinated writable GitHub development lane during this pilot. Other chats may brainstorm or read-only review, but should first verify latest `main`, task/PR ownership and the canonical handoff, and must not silently launch duplicate work or edit shared project Markdown in parallel.
+- **Jules utilization:** Prefer continuing confirmed active/paused-resumable Jules tasks for original-scope questions, corrections, tests and follow-up feedback rather than launching new tasks. Preserve links and prior results. Do not assume a completed task can begin unrelated work or that closing a PR determines Jules's internal state; check actual Jules status before attempting to reuse a session. Use a new bounded task only when necessary after checking existing task receipts. Do not enable spending, scheduling or proactivity merely to maximize Jules usage.
+- **Existing first task:** https://jules.google.com/task/7194871727713726446 (issue #1 → PR #2 closed unmerged); the independently corrected implementation was accepted through PR #3. **JULES_SESSION_STATE_UNVERIFIED** from available GitHub connection; no new Jules task started here. `AGENTS.md` and `docs/JULES_COLLABORATION.md` now describe reuse-first and single-coordinator execution.
+- **Changes in this checkpoint:** Documentation-only: project policy and canonical handoff; no code/HTML, recurring workflow, paid service, credentials, GitHub permissions, Jules labels or runtime deployment edits. Next technical step remains a bounded Jules feedback-incorporation pilot on an exclusively Jules-owned task branch, with independent review and Node tests.
+
+
 ## Accepted Jules integration milestone — 2026-10-22
 
 - **Accepted main SHA (initial integration):** `e805ba3dd5afc467df643c0a7d2f481a59a2fb11`, squash merge of independently reviewed [PR #3](https://github.com/dossja88/clanker-live-chat/pull/3). Superseded Jules [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2) was **closed unmerged**, not replayed, after confirming its original two architecture docs are byte-identical on accepted code and its protocol lacks the three reviewed safeguards.
