@@ -2,6 +2,10 @@
 
 Clanker is an original, endearing, slightly battered, confidently curious robot learning to play games and interact with **The Crew**. Motto: **“Gaming competency: unverified. Confidence: maximum.”**
 
+## Multi-agent development integration
+
+The first bounded Jules pilot is integrated into `main` through [PR #3](https://github.com/dossja88/clanker-live-chat/pull/3); its original flawed competing [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2) is closed. All seven Node.js test suites passed on the corrected candidate in [run 39711946360](https://github.com/dossja88/clanker-live-chat/actions/runs/39711946360). Agent collaboration rules are in `AGENTS.md` and [`docs/JULES_COLLABORATION.md`](docs/JULES_COLLABORATION.md); the two optional local scope/overlap guard scripts are in `scripts/`. **Do not claim fully unattended Jules feedback reconciliation, merge protection or hosted Clanker autonomy**—those remain future milestones. There is no retained GitHub Actions test workflow or paid service.
+
 ## Canonical project records
 
 - **Application:** [`index.html`](index.html). GitHub Pages serves this single-file HTML/CSS/JavaScript prototype at https://dossja88.github.io/clanker-live-chat/.

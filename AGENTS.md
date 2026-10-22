@@ -1,6 +1,6 @@
 # AGENTS.md — Clanker AI operating rules
 
-## Shared Markdown ownership — proposed integration rule (2026-10-22)
+## Shared Markdown ownership — accepted integration protocol (2026-10-22)
 - **Optional offline preflight:** Run `node scripts/check-agent-scope.cjs --base <accepted-main-SHA> --role executor` on an agent-owned local checkout before submitting a coding PR; it flags protected Markdown edits. Integration stewards may use `--role steward` to report protected changes for semantic review. This is an advisory local check (no authentication or GitHub enforcement), and `node tests/agent-scope-check.cjs` exercises synthetic real-Git fixtures. No CI installation or branch protection is implied.
 - **Two-branch overlap audit:** Given locally available candidate refs from two agents and their common accepted base, run `node scripts/check-agent-overlap.cjs --base <SHA> --left <refA> --right <refB>`; exit 2 means overlapping file paths or protected Markdown edits require explicit steward review. A clean path result is not a semantic merge authorization. This currently runs only when invoked and cannot fetch branches, block GitHub pushes, or enforce merges.
 
@@ -11,7 +11,7 @@
 - **Safe document write:** Check current target branch HEAD and target file blob SHA; prepare a minimal, section-scoped patch against the latest content. Re-read and compare immediately before committing. Use blob-SHA compare-and-swap plus expected branch HEAD / non-force ref update where supported; on a mismatch, stop, re-read, and perform a fresh semantic 3-way reconciliation. Never force-push, blindly retry a stale whole-file replacement, or silently discard a newer section.
 - **Conflict classification:** Same section edited by multiple agents, heading moved/deleted, policy or NEXT ACTION contradictory, or any attempted deletion of established decisions is a semantic conflict even if Git reports a clean merge. Preserve both proposals, flag the overlap in PR review, and choose the accepted text explicitly before integration.
 - **No automatic policy merge:** Status and technical documentation may be integrated after review and tests, but changes to privacy, billing, approval gates, publishing, permissions or owner command meanings require their existing owner-approval boundary. No new CI, branch protection, scheduled agent, or auto-merge is activated by these Markdown instructions.
-- This contract is **currently proposed on draft PR #3**, not enforced on `main` or by GitHub repository settings. A separate reviewed policy integration is required before it governs newly dispatched work.
+- **Accepted on `main`:** PR #3 was independently Node-tested and merged as `e805ba3dd5afc467df643c0a7d2f481a59a2fb11`. This is a repository instruction contract: the two guard scripts remain **advisory, manually invoked tools**, not GitHub-enforced branch protections, installed required checks, or an autonomous merge service. Do not assume another coding agent has loaded this policy until it reads current `main`.
 
 
 ## Multi-agent GitHub concurrency: Jules pilot lesson (2026-10-22)
