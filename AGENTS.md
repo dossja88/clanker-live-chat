@@ -1,5 +1,11 @@
 # AGENTS.md — Clanker AI operating rules
 
+## Jules PR review fallback after missing read_pr_comments tool (2026-10-22)
+
+- On pilot #2, Jules's in-task diagnostic reported that the platform prompted `read_pr_comments` but the tool was **unavailable** and the review comment **content absent**. It then performed no source edits, with clean local status and repeated empty remote submissions. See `docs/JULES_FEEDBACK_INCIDENT.md` for what is Jules-reported versus independently verified.
+- In future new-scope Jules work, if automatic PR feedback fails, **send the exact review instructions in the same existing task's chat**, not repeated duplicate PR comments or fresh task dispatch. Require the agent to acknowledge the *actual feedback text*, make a scoped nonempty source/test change, present legitimate Node evidence and different Git tree before publication. Do not copy sensitive values into task chat, and retain one writer per feature branch. This does not authorize reopening or editing completed pilot PR #5.
+
+
 ## Jules PR feedback evidence gate — accepted pilot lesson (2026-10-22)
 
 - Four Jules-authored zero-file commits were independently verified across Clanker pilot PRs #2/#5. A reaction, new commit SHA, green baseline tests, or original commit message is **not proof of implementing review feedback**. When a review response arrives, compare exact before/after Git *trees* and changed code/test paths; optionally use `node scripts/check-agent-feedback-diff.cjs --before <reviewed-ref> --after <new-ref>` on a local checkout containing both commits. Exit 2 means NO_CHANGE and must be treated as unresolved, not retried repeatedly. See `docs/JULES_FEEDBACK_INCIDENT.md` for the public evidence.

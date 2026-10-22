@@ -1,5 +1,11 @@
 # Clanker AI — canonical project handoff
 
+## Jules internal diagnostic confirms feedback retrieval failure (2026-10-22)
+
+- **Decisive user-supplied task response:** Jules's existing task #7200037830362515152 reports it received a generic PR-comment notification instructing use of `read_pr_comments`, yet that tool was **missing** and comment bodies **not delivered** in the task session. It confirms a clean local worktree and only the original internal `da9b938ce99d2d12b4c219fc540e194f82ccefe8` commit, with no post-review source edits or staging. The task attributes the three GitHub empty commits `704f7ede`, `151b5b5`, `a140ae1` to its repeated unchanged submissions. The remote tree and zero-file commits were independently verified, but the Jules internal-tool diagnosis is a **Jules-reported** account, not direct inspection of its private logs. Full provenance and support packet: [`docs/JULES_FEEDBACK_INCIDENT.md`](JULES_FEEDBACK_INCIDENT.md).
+- **Practical prevention:** For a future genuinely new Jules job, use direct in-task `Talk to Jules` to deliver concrete review text/negative tests when automatic PR comment retrieval is unavailable; verify actual modified source/test paths and a different tree before publishing. Do not repeat the consumed pilot #2 label, reopen closed PR #5, spin up new task to fix already integrated code, or misinterpret reaction emoji as evidence the comments were readable. No cloud deployment or additional cost authorized. The separate Clanker offline workstream remains governed by latest `main`.
+
+
 ## Jules task-page activity copied by owner — follow-up diagnosis (2026-10-22)
 
 - User supplied text from the authenticated existing Jules task #7200037830362515152 showing **only the original** 4-file implementation, one described Node verification, then repeated `Ready for review` states with the **same +536 / -0** diff and unchanged completion summary; no visibly new edit/test events for the corrections. Later task UI reports internal HEAD `da9b938ce99d2d12b4c219fc540e194f82ccefe8`; direct GitHub lookup of that SHA fails (HTTP 422, not a public repository commit) while PR #5 actually contained `a888e1a` plus three zero-file bot commits. This strengthens the **stale/original submission replay** hypothesis, but internal root cause remains unproven without Jules activities/logs.

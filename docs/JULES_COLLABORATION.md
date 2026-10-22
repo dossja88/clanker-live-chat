@@ -1,5 +1,12 @@
 # Jules collaboration and concurrency contract — Clanker pilot
 
+## PR feedback fallback — direct in-task message before accepting changes
+
+**Task-specific root-cause evidence:** In pilot #2's authenticated task chat, Jules stated that it received a generic PR-comment notification requesting `read_pr_comments`, **without the comment bodies**, and the named tool was **not available**. Its local repo stayed clean at `da9b938...`; three separate platform submissions left the GitHub PR at the same code tree. This is Jules's task-level self-report corroborated by remote no-change commits, not a generalized conclusion about all Jules installations. See `docs/JULES_FEEDBACK_INCIDENT.md`.
+
+**Required fallback for future scoped work:** If a GitHub comment is acknowledged but not incorporated, do **not** assume the comment contents reached Jules. In the **same Jules task's Talk to Jules**, paste the precise bug, test/reproduction, expected correction, and reviewed SHA; ask the agent to confirm visibility and report `git status`, source/test diff, actual test results and distinct new tree. Never accept `Ready for review`, 👀 or a new commit SHA as proof of a modification; use the opt-in `scripts/check-agent-feedback-diff.cjs` and review new content. If the source feature is already integrated by the steward, perform **diagnosis only**, not republish or duplicate the obsolete task. No account/settings changes, recurring CI, billing, developer tokens or new Jules job are justified.
+
+
 ## Empty Jules feedback commits — diagnosis before retries
 
 A known pattern across both local Clanker pilots: Jules acknowledges PR comments but pushes a **new Git SHA with the same exact tree** (four zero-file commits). The first pilot additionally lost independent fixes when Jules republished its old tree. See the proof, provider reports, support packet and uncertainty boundary in `docs/JULES_FEEDBACK_INCIDENT.md`.
