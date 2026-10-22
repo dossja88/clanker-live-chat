@@ -1,5 +1,95 @@
 # Clanker AI — canonical project handoff
 
+## Jules integration acceptance verification — 2026-10-22
+
+- **Genuine full-suite test gate cleared.** Single authorized one-time public GitHub Actions run [#39711946360](https://github.com/dossja88/clanker-live-chat/actions/runs/39711946360) completed **SUCCESS** against exact source HEAD `39acee96aa0cb6ecf19be09ce1a710ae49230a2e` using Node.js **v22.23.3** and Git **v2.55.0**. Real Node CLI passes: `node tests/regression.cjs` (all browser safety/DOM/Twitch mock regressions), `node tests/headless2048.cjs` (all headless 2048 checks), `node tests/supervisor2048.cjs` (**8/8**), `node tests/benchmark2048.cjs` (reproducible seeded benchmark), `node tests/protocol2048.cjs` (**9/9** protocol categories), `node tests/agent-scope-check.cjs` (**6/6**), and `node tests/agent-overlap.cjs` (**8/8**). See immutable official job logs ID `119605074325`.
+- **Bounded runner retired.** Temporary `.github/workflows/one-time-clanker-review.yml` added only to reviewer PR for the one-time check then removed in commit `3420a5ed4088cce67a7c18c574d33300356fd23e`. GitHub commit comparison of `39acee9..3420a5e` showed **only removal of that temporary workflow**; no candidate code or tested guard changes. No on-going CI, test cadence, secrets, credentials, API service, other account permission or billable runtime was provisioned. Standard hosted Linux runner for this **public** repository is free according to GitHub's published billing documentation. Pages app `index.html` and `stage.html` were never changed on this PR.
+- **PR reconciliation:** Against Jules PR #2 at `e653639`, reviewer PR #3 preserves **byte-identical** `docs/CLEAN_STAGE.md` and `docs/CLOUD_AUTONOMY_PLAN.md` (Git blob SHAs `6fff9602...` and `dba8fd3...`). `src/stage-protocol.cjs` and `tests/protocol2048.cjs` differ intentionally: Jules PR #2 lacks required bidirectional status/phase validation and same-revision snapshot immutability; review PR #3 includes both fixes and verified regression tests. Handoff differs to record exact review/guard evidence. Thus the reviewer branch is the **selected corrected integration candidate**; **never merge both competing PRs**.
+- **Result:** GitHub issue `jules` label → task acceptance → coding PR, separate independent review, reproducible tests and corrected handoff are **verified**. Autonomous Jules feedback incorporation **did not succeed** in this pilot (a concurrent branch write reverted fixes), so agent branch exclusivity and steward-mediated merge are required. This is evidence of an assisted orchestrated cycle, **not unattended automatic safe merging**.
+- **Promotion gate:** This record is currently on the **review PR** only until reviewed integration; `main` retains its prior canonical policy until merge. After an authorized merge, record actual merge SHA and close superseded PR #2 as `not_planned` rather than merging its flawed implementation. No Twitch broadcasting, credentials, game automation, creator Drive uploads, publishing of new videos or spending has been authorized.
+
+
+## Actual Jules/reviewer branch overlap — 2026-10-22
+
+- Compared exact live GitHub refs against common `main` base `5824afa18c77c8dd5ef4426979cdb7e7ab5eb756`: Jules PR #2 at `e65363952279debbf362d31d41ef23727f443f4d` and review draft PR #3 at `b56cb6636a3702833eed9f0621c9fe5238a66839`.
+- Both candidates change **five common paths**: `docs/CLEAN_STAGE.md`, `docs/CLOUD_AUTONOMY_PLAN.md`, `docs/PROJECT_HANDOFF.md`, `src/stage-protocol.cjs`, and `tests/protocol2048.cjs`. This is overlapping scope that **requires explicit semantic reconciliation**; it is not necessarily a textual merge conflict. Reviewer branch additionally changes `AGENTS.md` and `docs/JULES_COLLABORATION.md`, both proposed policy files.
+- **Verified safety tests:** `node tests/agent-scope-check.cjs`: 6/6 PASS; `node tests/agent-overlap.cjs`: 8/8 PASS; real Node v22.16.0 and Git v2.47.3, local synthetic histories. Verified Git blob hash equality for new overlap checker and tests. Actual Node gameplay/protocol five-suite verification for review PR #3 remains **PENDING** because the isolated local runner cannot fetch full remote repository content.
+- **Safe next step:** Keep Jules PR #2 and review PR #3 unmerged; do not auto-merge overlapping files or generalize either branch's Markdown as accepted policy. Reconcile the five paths under single-writer stewardship only after full candidate-specific Node tests and verify the final diff against the latest `main`. No new Jules task, CI workflow, cloud hosting, cost, OAuth, Twitch, Drive, publication or permissions change was authorized/executed in this checkpoint.
+
+
+## Two-branch collision auditor — protected draft PR #3 (2026-10-22)
+
+- Added `scripts/check-agent-overlap.cjs` and `tests/agent-overlap.cjs`, a provider-neutral offline checker for two agents' candidate Git branches. It compares explicit common-base-to-HEAD changed file paths, including renames, and flags overlap or protected Markdown modifications before steward integration. It does not merge, push, or automatically allow policy changes.
+- **Actual independent Node/Git execution:** `node tests/agent-overlap.cjs` **PASS 8/8** on Node v22.16.0 and Git v2.47.3 in temporary local test repositories. GitHub object hashes match the byte-identical tested files (`67a5578fead7ad7a04396037cf00ecfc49174ac0`; `34eac2e3b090f6ab6a6f60728d908e2aad860940`).
+- These 8 passing guard tests are **not** evidence that the five Clanker gameplay/protocol test suites ran. The corrected Clanker candidate at this branch still needs full genuine Node verification; direct network checkout/download remains unavailable in the local test runtime. No cost, workflow, GitHub settings, authorization, Jules task, deployment or publication was changed.
+- The checker is advisory: GitHub does not run or enforce it automatically. It requires the base and both branch refs already present in a local Git checkout; no agent identity verification or semantic file-content merge is claimed.
+- **Next:** keep PR #2 Jules-owned and PR #3 independent/unmerged. Obtain corrected candidate's full Node test evidence, review actual overlapping paths/semantic differences, then evaluate approval-gated integration of only one correct implementation. The accepted `main` policy is unchanged until separately integrated.
+
+
+## Provider-neutral offline scope guard — draft PR #3 (2026-10-22)
+
+- Added `scripts/check-agent-scope.cjs` and `tests/agent-scope-check.cjs` to the isolated review branch as a **non-networked advisory guard** for future Jules/Codex/Gemini/Cursor agents. It audits actual Git branch diffs and flags edits to protected policy/handoff Markdown by an agent in executor role, including file renames and dirty worktrees.
+- **Independently tested:** `node tests/agent-scope-check.cjs` PASS (6/6) using Node.js v22.16.0 and Git v2.47.3 in synthetic temporary repos. This is an actual Node CLI test of this NEW guard, **not** the five pending Clanker game/protocol suites.
+- The guard is not a GitHub permission, branch protection, identity check, automatic workflow, semantic conflict resolver, or mandatory CI job. No schedule, credentials, integration trigger, deployment, paid service or main-branch changes were made.
+- **Next:** Confirm the committed source exactly matches the independently tested script and that draft PR #3 remains isolated; then arrange actual Clanker protocol-suite verification and explicit eventual integration without giving two agents write authority over one branch.
+
+
+## Proposed Markdown single-writer protocol — draft PR #3 (2026-10-22)
+
+- Responding to owner concern about agents overwriting `.md` files: existing per-branch writer separation is necessary but insufficient for shared project policy and handoff documents. This review branch now proposes explicit role-based stewardship of `AGENTS.md` and the one canonical `docs/PROJECT_HANDOFF.md`, with coding-agent results delivered by SHA-linked PR comments or clearly labeled candidate diffs.
+- The accepted `main` branch remains authoritative; work-branch Markdown is only a proposal. At integration, re-read all competing PRs, compare file blobs and branch heads, use minimal section patches, resolve semantic conflicts, and refuse stale whole-file replacement or automated destructive merges.
+- This is **documentation only on draft PR #3**. Current `main` is unchanged; no GitHub branch protections, lock service, scheduled workflow, automation trigger, credentials, billing, publication or auto-merge was configured. These rules are not yet automatically consumed by an already-running Jules task.
+- NEXT ACTION: keep both PRs unmerged, verify the corrected candidate under a genuine Node CLI, then review proposed Markdown ownership rules and integrate only after resolving PR differences and existing gates.
+
+
+## Jules pilot draft-review fallback — 2026-10-22
+
+- **Review PR:** [#3](https://github.com/dossja88/clanker-live-chat/pull/3) is a **DRAFT** from `review/clanker-stage-protocol-v1` to `main`, opened to preserve independently verified code and the new exclusive-branch-writer instructions without touching the Jules task branch.
+- **Jules PR:** [#2](https://github.com/dossja88/clanker-live-chat/pull/2) remains open, unmerged and **known uncorrected** at `e65363952279debbf362d31d41ef23727f443f4d`; Jules has not supplied a successful genuine-Node run of the corrected candidate or demonstrated reliable incorporation of PR feedback.
+- **Validation boundary:** Actual Node.js v22.16.0 exists in the independent execution environment, but GitHub clone/archive retrieval failed because that environment cannot resolve/retrieve GitHub. Therefore **no full Node CLI suites were run on PR #3**; earlier nine protocol-category V8/CommonJS-shim passes are not equivalent. No GitHub Actions workflow currently exists, and no new paid infrastructure, workflow or task was started to work around this restriction.
+- **Integration pilot results:** GitHub issue→Jules task creation **verified**, Jules task→PR **verified**, review correction preservation and draft PR **verified**, correct automatic Jules feedback incorporation **FAILED IN PILOT**, exact-SHA independent full Node validation **PENDING**, unattended multi-repository cycle **NOT VERIFIED**.
+- **Next:** Obtain a real Node CLI report for *this candidate commit* through an already-authorized runner, review the complete diff, reconcile PR #2 vs draft PR #3 without concurrent branch writes, and keep deployment/merge gated. Do not accidentally promote two competing PRs.
+
+## Jules pilot integration checkpoint — single-writer recovery (2026-10-22)
+
+- **Pilot scope:** GitHub issue [#1](https://github.com/dossja88/clanker-live-chat/issues/1) labeled `jules` successfully created one Jules coding task ([task](https://jules.google.com/task/7194871727713726446)), which opened [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2). GitHub→Jules task acceptance and PR creation are observed end-to-end.
+- **Critical automation lesson:** The Jules PR branch advanced from reviewer patch commit `0ca6455608c888fb914f5fe3ded4abeeacb5903d` to Jules commit `e65363952279debbf362d31d41ef23727f443f4d`, removing exactly the reviewer-added fixes/tests/handoff notes from three files. Confirmed via GitHub compare: 0 additions/59 deletions. **The current Jules PR branch is NOT corrected and is not approved to merge.** No automatic feedback-following acceptance has been verified.
+- **Recovery:** Created independent `review/clanker-stage-protocol-v1` from preserved commit `0ca6455` on 2026-10-22. This branch holds bidirectional won/lost/playing phase checks, same-revision committed-state immutability, adversarial regression tests, and the prior canonical review note; Jules remains the sole writer of its own task PR branch.
+- **Tests:** At `0ca6455` the protocol runner passed nine categories in an isolated V8/CommonJS-shim evaluation (previously recorded), **not** a genuine Node CLI run. Jules reported 5-suite Node v22 PASS for its original baseline, but that claim does not independently prove the later reviewer patch; further genuine Node regression evidence is required.
+- **Reusable operating procedure:** See `docs/JULES_COLLABORATION.md`; adopt exact-SHA review, branch-exclusive editing, replay-safe handoff, no forced refs, no duplicate task dispatch, explicit test/merge gates.
+- **Next action:** Keep PR #2 open/unmerged; verify corrected branch's actual source and test evidence, then safely reconcile into the Jules PR only after its writer status is resolved, or prepare a separate human-owned review PR if needed. Do not overwrite active Jules work or auto-deploy. No new paid services, GitHub workflows, OAuth, Twitch broadcast, creator Drive or account permissions.
+
+
+## Jules pilot PR #2 — independent corrective review (2026-10-22)
+
+- [GitHub issue #1](https://github.com/dossja88/clanker-live-chat/issues/1) dispatched the first bounded coding task to Jules, producing [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2). The PR remains unmerged; no production GitHub Pages deployment or livestream is authorized.
+- Independently identified and reproduced invalid stage events: won/stopped, lost/stopped and same-revision mutations of game state. Actual live module source ran in an isolated JavaScript V8 runtime with CommonJS shims; this is **not** real Node CLI or proof of cloud safety.
+- Corrective PR-branch patch adds bidirectional status/phase mapping consistent with the supervisor, immutable same-revision committed state, valid timestamp/sequence refresh, and focused adversarial test assertions. All nine existing protocol categories passed with the patched source in the isolated V8 runner. Real Node tests of the corrected PR are **still required** before merge.
+- This targeted branch change does not affect the current public browser application, services, OAuth, Twitch, creator Drive, publisher game controls or cost settings. No additional Jules task was dispatched. A Jules feedback review was already posted; branch/concurrent-edit conflicts must be resolved before any more changes.
+- Next step: verify this new PR branch SHA, request/obtain genuine Node CLI results for all five suites, review remaining risks, and only then consider authorized integration.
+
+
+## Read-only 2048 stage status protocol v1 and offline tests milestone — 2026-10-22
+
+- **Milestone Task:** Implement dependency-free read-only stage status event protocol v1 (`src/stage-protocol.cjs`) for future untrusted renderers, independent of DOM, Twitch, and network.
+- **Base Commit:** `5824afa18c77c8dd5ef4426979cdb7e7ab5eb756` (HEAD on `main`). Work performed on new working branch. Target PR branch: `main`.
+- **Implementation (`src/stage-protocol.cjs`):**
+  - Pure explicit allowlist projector (`projectStageEvent`) from validated supervisor checkpoints.
+  - Deterministic sorted key JSON encoder (`encodeStageEvent`) with strict byte size limit enforcement (<= 2048 bytes).
+  - Strict versioned receiver/validator (`parseStageEvent`, `validateStageEvent`) enforcing non-power-of-two tile rejection, board dimension checks, status/phase consistency, and monotonic sequence/revision tracking.
+  - Rejects unknown or nested fields, prototype pollution attempts, malformed JSON, out-of-order or replayed revisions, and operator instruction injection (`action`, `command`, `token`, `operator`, etc.).
+  - Explicit distinction preserved: sanitized display projection is NOT authentication and may NOT accept operator instructions.
+- **Offline Test Suite (`tests/protocol2048.cjs`):**
+  - 9 test categories covering valid supervisor state projection, deterministic key ordering, payload size limits, malformed JSON, oversized payloads, extra/missing fields, cross-field leaks, instruction injections, prototype pollution, board/tile sanity, phase/status contradictions, sequence/revision monotonicity, and persistent STOP state protection against outdated un-stop attempts.
+- **Execution & Test Verification Results (Node.js v22):**
+  - `node tests/regression.cjs`: **PASS** (59/59 assertions, 0.08s)
+  - `node tests/headless2048.cjs`: **PASS** (4/4 assertions, 0.05s)
+  - `node tests/supervisor2048.cjs`: **PASS** (8/8 assertions, 0.06s)
+  - `node tests/benchmark2048.cjs`: **PASS** (24 dev + 24 holdout seeds, 0.09s)
+  - `node tests/protocol2048.cjs`: **PASS** (9/9 categories, 0.04s)
+- **Exclusions & Hard Safeguards:** No dependencies added, no external network calls, no Twitch/OAuth modifications, no new cloud host, no billable API usage, no third-party viewer data captured, no public stage.html layout changes or browser regression.
+- **Next Action:** Propose PR targeting `main` without direct merging, auto-merging, pushing directly to `main`, or initiating further automated tasks.
+
 ## Conditional creator Drive review cleanup policy (2026-10-21)
 
 Owner selected recommendation/approval-first cleanup across projects where dedicated creator Drive is later used for authorized browser-viewable private media. Explicitly temporary previews become suggested deletion candidates **after** genuine owner evaluation and verified source/master/milestone preservation; no automatic trash, personal-account cleanup, other-project cleanup or destructive response to `go`. Public repository must not disclose creator account email, private Drive IDs/links or credentials. This updates the future-use guidance in `AGENTS.md` only: **no new Drive integration, media generation, account access, billing, upload, storage archive or publication** is authorized or executed. The existing browser-first Clanker experience remains unaffected. A separate redundant protected-original archive may be evaluated later without changing current project operation.

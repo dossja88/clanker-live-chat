@@ -11,19 +11,26 @@ The Brain Lab has a link **Open read-only clean stage ↗** in the local 2048 pa
 
 This page has **no Twitch sign-in form, Gemini key input, owner memory backup, chat transcript, localStorage, sessionStorage, WebSocket, Twitch API, stream/video recorder, or game-control buttons**. It cannot perform gameplay actions. It does not automatically launch, schedule or authorize a public stream or provide a persistent host.
 
-## Data-flow boundary
+## Data-flow boundary and Stage Protocol v1 (`src/stage-protocol.cjs`)
 
 ```text
-Owner's index.html Brain Lab (active, visible browser page)
+Owner's index.html / Supervisor Core
   ├─ original v2.5 face + local2048 game state
   ├─ Twitch receive-only and existing privacy controls remain here
-  └─ BroadcastChannel("clanker.stage.v1")
-      → clanker.stage.state.v1 [whitelisted local board and authored display data only]
-          → stage.html [read-only visual renderer, no game actuator]
-      ← clanker.stage.request.v1 [version-only harmless snapshot request]
+  └─ Stage Protocol v1 (clanker.local2048.stage.v1)
+      → projectStageEvent(supervisorState)
+          → encodeStageEvent() [deterministic sorted JSON <= 2048 bytes]
+              → parseStageEvent() / validateStageEvent()
+                  → createStageReceiver() [rejects out-of-order/replayed revisions and instruction keys]
+                      → stage.html / Untrusted Renderer
 ```
 
-Only the whitelisted fields are sent: message `type`, `version`, `at`, fixed `origin:local2048`, 4×4 tiles or null, current game score, move count, local game phase, running indicator, face name from the existing nine approved expressions, speaking boolean and at most **220 characters of local-game-authored commentary**. No viewer/user identifiers, raw Twitch messages, OAuth fragments, tokens, Gemini keys, account identifiers, private creator folder paths, memory/analytics/research summaries or secrets are added to this event. The game itself is unchanged; its executor remains in `index.html` only.
+### Stage Protocol v1 Guarantees (`clanker.local2048.stage.v1`)
+
+1. **Pure Explicit Allowlist:** Projects only safe aggregate status fields: `at`, `board`, `budget`, `highestTile`, `phase`, `revision`, `schema`, `score`, `sequence`, `status`, and `turns`.
+2. **Instruction Exclusion:** Explicitly rejects any field or payload containing operator instruction keys (`action`, `command`, `control`, `do`, `eval`, `execute`, `instruction`, `move`, `op`, `operator`, `payload`, `script`, `start`, `stop`, `token`). Sanitized display projection is **NOT** authentication and may **NOT** accept operator instructions.
+3. **Strict Validation & Bound Enforcements:** Rejects malformed JSON, oversized payloads (>2048 bytes), prototype pollution, non-power-of-two tiles, invalid/contradictory game phases or statuses, and missing or extra fields.
+4. **Monotonic Sequence & Revision Enforcement:** `createStageReceiver()` tracks strict sequence and revision ordering, rejecting replayed or out-of-order revisions/sequences and refusing un-stop attempts on persistent `stopped` states without an authorized higher revision.
 
 The stage validates the schema and recency (30-second window), face/phase enums, safe integer bounds and precisely sixteen zero-or-power-of-two tiles before rendering. It uses **`textContent` for all content** and a pre-defined SVG face generator; it does not execute HTML or instructions supplied through the channel. Invalid state cannot update its display. It sends only a versioned snapshot request every four seconds while open. A **12-second silence warning** labels stale state rather than pretending continuous connectivity. The source broadcasts on game board updates, authored commentary updates and face changes.
 
@@ -39,9 +46,9 @@ If a clean stage cannot connect, check that both links are served at the same si
 
 ## Evidence and testing
 
+- `tests/protocol2048.cjs` thoroughly tests Stage Protocol v1: valid supervisor projection, deterministic sorted JSON encoding, payload size limits, malformed JSON, oversized payloads, extra/missing/nested fields, cross-field leaks, instruction injection attempts, prototype pollution, board/tile validity, status/phase contradiction checks, and sequence/revision monotonicity.
 - `tests/regression.cjs` checks the **exact same portrait WebP bytes** in both pages, both inline scripts parse, the stage omits credential fields and sensitive APIs, controlled dummy BroadcastChannel requests cannot actuate the game, source message schema excludes viewer/secret data, malformed payloads cannot replace the rendered board, and visual elements are set through text rather than network or unsafe HTML insertion.
 - All earlier in-page portrait, real local 2048 seeded win, game budget/STOP, Twitch receive-only/forget/race, memory and fallback checks remain.
-- Tests executed so far only under the connector JavaScript V8/DOM/Node-built-in shim. **No genuine Node CLI, physical Xbox/Android browser, Pages delivery, real third-party viewer, TTS, OBS integration or live broadcast is verified.**
 
 ## Next meaningful milestone
 
