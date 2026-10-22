@@ -1,5 +1,15 @@
 # Clanker AI — canonical project handoff
 
+## Jules pilot integration checkpoint — single-writer recovery (2026-10-22)
+
+- **Pilot scope:** GitHub issue [#1](https://github.com/dossja88/clanker-live-chat/issues/1) labeled `jules` successfully created one Jules coding task ([task](https://jules.google.com/task/7194871727713726446)), which opened [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2). GitHub→Jules task acceptance and PR creation are observed end-to-end.
+- **Critical automation lesson:** The Jules PR branch advanced from reviewer patch commit `0ca6455608c888fb914f5fe3ded4abeeacb5903d` to Jules commit `e65363952279debbf362d31d41ef23727f443f4d`, removing exactly the reviewer-added fixes/tests/handoff notes from three files. Confirmed via GitHub compare: 0 additions/59 deletions. **The current Jules PR branch is NOT corrected and is not approved to merge.** No automatic feedback-following acceptance has been verified.
+- **Recovery:** Created independent `review/clanker-stage-protocol-v1` from preserved commit `0ca6455` on 2026-10-22. This branch holds bidirectional won/lost/playing phase checks, same-revision committed-state immutability, adversarial regression tests, and the prior canonical review note; Jules remains the sole writer of its own task PR branch.
+- **Tests:** At `0ca6455` the protocol runner passed nine categories in an isolated V8/CommonJS-shim evaluation (previously recorded), **not** a genuine Node CLI run. Jules reported 5-suite Node v22 PASS for its original baseline, but that claim does not independently prove the later reviewer patch; further genuine Node regression evidence is required.
+- **Reusable operating procedure:** See `docs/JULES_COLLABORATION.md`; adopt exact-SHA review, branch-exclusive editing, replay-safe handoff, no forced refs, no duplicate task dispatch, explicit test/merge gates.
+- **Next action:** Keep PR #2 open/unmerged; verify corrected branch's actual source and test evidence, then safely reconcile into the Jules PR only after its writer status is resolved, or prepare a separate human-owned review PR if needed. Do not overwrite active Jules work or auto-deploy. No new paid services, GitHub workflows, OAuth, Twitch broadcast, creator Drive or account permissions.
+
+
 ## Jules pilot PR #2 — independent corrective review (2026-10-22)
 
 - [GitHub issue #1](https://github.com/dossja88/clanker-live-chat/issues/1) dispatched the first bounded coding task to Jules, producing [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2). The PR remains unmerged; no production GitHub Pages deployment or livestream is authorized.

@@ -1,5 +1,15 @@
 # AGENTS.md — Clanker AI operating rules
 
+## Multi-agent GitHub concurrency: Jules pilot lesson (2026-10-22)
+
+- GitHub issue #1 `jules`-label event successfully dispatched the single authorized Jules pilot, and Jules opened PR #2. This establishes dispatch and PR creation, **not** reliable automatic coding-to-merge, automatic review assimilation, continuous agent control, or unrestricted quota.
+- **Exclusive writer per branch:** A Jules-owned branch is for Jules commits only while its task or PR feedback is active. ChatGPT/Work/Codex/Gemini and humans perform read-only review and GitHub PR comments against an exact SHA. They must not push onto Jules's active branch, even to repair a found bug.
+- To preserve reviewer-proposed code, create an independent non-destructive `review/` branch from a verified SHA, or supply a targeted patch via PR review; identify its ownership explicitly. Jules should incorporate a proposal only after verifying its current branch HEAD, cherry-picking/reimplementing consciously, and running tests. Never force/reset or silently replace concurrent commits.
+- **Observed race:** Jules's commit `e653639` on its PR branch removed the independent `0ca6455` status/phase and same-revision fixes. A separate `review/clanker-stage-protocol-v1` branch preserves `0ca6455`. Do not label the reverted Jules PR as corrected or merge-ready. This is a verified loss of reviewed changes, not an authorization to restart the Jules task.
+- An independent reviewer must compare the **actual latest PR diff and commit SHAs**, test important negative cases, and distinguish Node CLI results from JS shims, model claims, and GitHub mergeability. Require a genuine Node run for all five existing suites before code integration. No new workflows/cron, paid tools, platform permissions, new Jules tasks, or public deployment without separate authorization.
+- Keep cross-agent instructions, verified evidence, next steps and blockers in the **single canonical** `docs/PROJECT_HANDOFF.md`. `docs/JULES_COLLABORATION.md` describes the reusable procedure; it is not a second canonical handoff. The pilot ends only when owner-approved review gates, test evidence and safe integration have been demonstrated.
+
+
 ## `go` continuation and adaptive execution — owner standard (2026-10-21)
 
 - In a project-associated ChatGPT Chat, Work or Codex conversation, `go` means recover the live GitHub branch/HEAD, read `AGENTS.md`, `README.md`, the latest relevant sections of `docs/PROJECT_HANDOFF.md` and task-specific instructions; reconcile ongoing/completed work and one-shot receipts before choosing the next substantive, safely authorized task. Preserve existing meanings of `ch`, `cd` and other commands.
