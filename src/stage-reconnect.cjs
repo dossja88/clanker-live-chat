@@ -7,6 +7,50 @@ const Protocol = require('./stage-protocol.cjs');
 
 const MAX_LIFETIME_EVENTS_LIMIT = 1024;
 
+const CHECKPOINT_SCHEMA = 'clanker.local2048.stage-reconnect-checkpoint.v1';
+const MAX_CHECKPOINT_BYTES = 4096;
+
+// A JSON *value*, not an authority grant. Host must authenticate the restore
+// and protect persisted bytes using its own private, monotonic storage.
+function parseReconnectCheckpoint(raw) {
+  if (typeof raw !== 'string' || Buffer.byteLength(raw, 'utf8') > MAX_CHECKPOINT_BYTES) {
+    throw Error('Checkpoint must be bounded UTF-8 JSON text.');
+  }
+  let data;
+  try { data = JSON.parse(raw); } catch (_) { throw Error('Malformed reconnect checkpoint JSON.'); }
+  const keys = [
+    'currentEpochSequence','epoch','lastAcceptedAt','latestAcceptedEvent',
+    'maxEvents','mustRotate','schema','stopEncountered','totalAcceptedLifetime'
+  ];
+  if (!data || typeof data !== 'object' || Array.isArray(data) ||
+      Object.keys(data).sort().join(',') !== keys.join(',') ||
+      data.schema !== CHECKPOINT_SCHEMA || !isValidEpoch(data.epoch) ||
+      !Number.isSafeInteger(data.maxEvents) || data.maxEvents < 1 ||
+      data.maxEvents > MAX_LIFETIME_EVENTS_LIMIT ||
+      !Number.isSafeInteger(data.totalAcceptedLifetime) ||
+      data.totalAcceptedLifetime < 0 || data.totalAcceptedLifetime > data.maxEvents ||
+      !Number.isSafeInteger(data.currentEpochSequence) ||
+      data.currentEpochSequence < 0 || data.currentEpochSequence > 100000000 ||
+      typeof data.mustRotate !== 'boolean' || typeof data.stopEncountered !== 'boolean') {
+    throw Error('Invalid reconnect checkpoint shape or counters.');
+  }
+  if (data.totalAcceptedLifetime === 0) {
+    if (data.latestAcceptedEvent !== null || data.lastAcceptedAt !== -1 ||
+        data.currentEpochSequence !== 0 || data.stopEncountered)
+      throw Error('Contradictory empty reconnect checkpoint.');
+  } else {
+    const valid = Protocol.validateStageEvent(data.latestAcceptedEvent);
+    if (data.lastAcceptedAt !== valid.at ||
+        (data.currentEpochSequence !== 0 && data.currentEpochSequence !== valid.sequence) ||
+        (valid.phase === 'stopped' && !data.stopEncountered))
+      throw Error('Contradictory reconnect checkpoint cursor.');
+  }
+  // Reject duplicated, reordered and otherwise noncanonical representation;
+  // exportCheckpoint writes deterministic JSON in the exact order below.
+  if (JSON.stringify(data) !== raw) throw Error('Noncanonical reconnect checkpoint refused.');
+  return deepFreeze(data);
+}
+
 function copy(val) {
   return val === null ? null : JSON.parse(JSON.stringify(val));
 }
@@ -50,6 +94,8 @@ function createStageReconnectReceiver({ epoch, authorizeOwner, maxEvents = 128 }
 
   // Shared reentrancy guard for mutating operations (receive and rotateEpoch)
   let mutationInProgress = false;
+  let mustRotate = false; // restored instances cannot receive before a fresh trusted epoch
+  let restoreAvailable = true; // one-shot fresh receiver only
 
   function status() {
     return Object.freeze({
@@ -68,6 +114,8 @@ function createStageReconnectReceiver({ epoch, authorizeOwner, maxEvents = 128 }
   }
 
   function receive(envelope) {
+    restoreAvailable = false;
+    if (mustRotate) throw Error('Restored receiver must rotate epoch before receiving.');
     if (mutationInProgress) {
       throw Error('Reentrant mutation rejected.');
     }
@@ -186,6 +234,7 @@ function createStageReconnectReceiver({ epoch, authorizeOwner, maxEvents = 128 }
   }
 
   function rotateEpoch(nextEpoch, ownerContext) {
+    restoreAvailable = false;
     if (mutationInProgress) {
       throw Error('Reentrant mutation rejected.');
     }
@@ -214,7 +263,49 @@ function createStageReconnectReceiver({ epoch, authorizeOwner, maxEvents = 128 }
       // Successful rotation
       currentEpoch = nextEpoch;
       currentEpochSequence = 0; // Reset per-epoch sequence cursor
+      mustRotate = false;
 
+      return deepFreeze(status());
+    } finally {
+      mutationInProgress = false;
+    }
+  }
+
+
+  function exportCheckpoint() {
+    if (mutationInProgress) throw Error('Cannot export during a mutating operation.');
+    return JSON.stringify({
+      currentEpochSequence,
+      epoch: currentEpoch,
+      lastAcceptedAt,
+      latestAcceptedEvent: latestAcceptedEvent === null ? null : copy(latestAcceptedEvent),
+      maxEvents,
+      mustRotate,
+      schema: CHECKPOINT_SCHEMA,
+      stopEncountered,
+      totalAcceptedLifetime
+    });
+  }
+
+  function restoreCheckpoint(raw, ownerContext) {
+    if (mutationInProgress) throw Error('Reentrant mutation rejected.');
+    if (!restoreAvailable) throw Error('Checkpoint restore requires a fresh receiver.');
+    restoreAvailable = false; // fail-closed, single attempt
+    mutationInProgress = true;
+    try {
+      if (authorizeOwner(ownerContext, 'restoreCheckpoint') !== true)
+        throw Error('Trusted checkpoint restore authorization required.');
+      const data = parseReconnectCheckpoint(raw);
+      if (data.epoch !== currentEpoch || data.maxEvents !== maxEvents)
+        throw Error('Checkpoint epoch or lifetime policy does not match host configuration.');
+      // All validation must succeed before the first state mutation.
+      currentEpochSequence = data.currentEpochSequence;
+      totalAcceptedLifetime = data.totalAcceptedLifetime;
+      latestAcceptedEvent = data.latestAcceptedEvent === null ? null : copy(data.latestAcceptedEvent);
+      latestAcceptedRevisionFloor = latestAcceptedEvent?.revision || 0;
+      stopEncountered = data.stopEncountered;
+      lastAcceptedAt = data.lastAcceptedAt;
+      mustRotate = true; // override saved value: restart requires a fresh trusted epoch
       return deepFreeze(status());
     } finally {
       mutationInProgress = false;
@@ -225,11 +316,16 @@ function createStageReconnectReceiver({ epoch, authorizeOwner, maxEvents = 128 }
     receive,
     rotateEpoch,
     getLatest,
-    status
+    status,
+    exportCheckpoint,
+    restoreCheckpoint
   });
 }
 
 module.exports = Object.freeze({
   MAX_LIFETIME_EVENTS_LIMIT,
+  CHECKPOINT_SCHEMA,
+  MAX_CHECKPOINT_BYTES,
+  parseReconnectCheckpoint,
   createStageReconnectReceiver
 });
