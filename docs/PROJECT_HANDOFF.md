@@ -1,5 +1,14 @@
 # Clanker AI — canonical project handoff
 
+## Jules pilot PR #2 — independent corrective review (2026-10-22)
+
+- [GitHub issue #1](https://github.com/dossja88/clanker-live-chat/issues/1) dispatched the first bounded coding task to Jules, producing [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2). The PR remains unmerged; no production GitHub Pages deployment or livestream is authorized.
+- Independently identified and reproduced invalid stage events: won/stopped, lost/stopped and same-revision mutations of game state. Actual live module source ran in an isolated JavaScript V8 runtime with CommonJS shims; this is **not** real Node CLI or proof of cloud safety.
+- Corrective PR-branch patch adds bidirectional status/phase mapping consistent with the supervisor, immutable same-revision committed state, valid timestamp/sequence refresh, and focused adversarial test assertions. All nine existing protocol categories passed with the patched source in the isolated V8 runner. Real Node tests of the corrected PR are **still required** before merge.
+- This targeted branch change does not affect the current public browser application, services, OAuth, Twitch, creator Drive, publisher game controls or cost settings. No additional Jules task was dispatched. A Jules feedback review was already posted; branch/concurrent-edit conflicts must be resolved before any more changes.
+- Next step: verify this new PR branch SHA, request/obtain genuine Node CLI results for all five suites, review remaining risks, and only then consider authorized integration.
+
+
 ## Read-only 2048 stage status protocol v1 and offline tests milestone — 2026-10-22
 
 - **Milestone Task:** Implement dependency-free read-only stage status event protocol v1 (`src/stage-protocol.cjs`) for future untrusted renderers, independent of DOM, Twitch, and network.

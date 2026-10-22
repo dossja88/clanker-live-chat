@@ -146,6 +146,16 @@ function validateStageEvent(event) {
   if (event.phase === 'lost' && event.status !== 'lost') {
     throw Error('Lost phase requires lost status.');
   }
+  // Match the supervisor's bidirectional status/phase mapping.
+  if (event.status === 'won' && event.phase !== 'won') {
+    throw Error('Won status requires won phase.');
+  }
+  if (event.status === 'lost' && event.phase !== 'lost') {
+    throw Error('Lost status requires lost phase.');
+  }
+  if (event.status === 'playing' && !['running', 'stopped', 'capped'].includes(event.phase)) {
+    throw Error('Playing status requires a nonterminal phase.');
+  }
   if (event.phase === 'running' && (event.status !== 'playing' || event.turns >= event.budget)) {
     throw Error('Running phase requires active game within budget.');
   }
@@ -249,6 +259,16 @@ function createStageReceiver() {
       }
       if (currentEvent.phase === 'stopped' && event.phase === 'running' && event.revision <= currentEvent.revision) {
         throw Error('Cannot un-stop a stopped session with an outdated revision.');
+      }
+      // New sequence/timestamp can refresh a committed snapshot. The
+      // game-state fields of that revision must remain immutable.
+      if (event.revision === currentEvent.revision) {
+        for (const key of ALLOWED_KEYS) {
+          if (key === 'at' || key === 'sequence') continue;
+          if (JSON.stringify(event[key]) !== JSON.stringify(currentEvent[key])) {
+            throw Error('Same-revision snapshot changed committed game state.');
+          }
+        }
       }
     }
 
