@@ -36,7 +36,7 @@ The replay harness safely produces a deterministic, ordered sequence of sanitize
 
 ## Security & Safety Boundaries
 
-- **No Remote Actuation / Privilege Escalation:** Display projection payloads are sanitized output-only mirrors. Passing a renderer payload or stage snapshot as `ownerContext` or `authorizeOwner` fails closed with an authorization error.
+- **Read-only renderer boundary, not owner authentication:** Stage-event payloads are sanitized display-only outputs; the replay receiver cannot execute commands. **The trusted host-supplied `authorizeOwner` callback alone decides start/stop authority.** The replay harness deliberately passes its caller's original `ownerContext` unchanged to that callback. A remote or renderer-supplied object that merely claims `role: 'owner'` is NOT authenticated or inherently rejected by the harness; the host must keep the authorization callback and its trusted context inaccessible to untrusted inputs. The included CLI's simple role check is a local demonstration only and must never be exposed as a remote access-control mechanism.
 - **Instruction Injection Refusal:** Payloads containing forbidden operator or instruction keys (`action`, `command`, `operator`, `payload`, etc.) are rejected pre-parse and by the receiver.
 - **Same-Revision Immutability:** Any attempt to alter non-sequence/non-timestamp game state within a same-revision event is rejected by the receiver.
 - **STOP Persistence:** A stopped session cannot be un-stopped by replaying stale events or crafting same-revision payloads.
