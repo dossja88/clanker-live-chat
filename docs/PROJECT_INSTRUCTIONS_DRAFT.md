@@ -1,5 +1,10 @@
 # Draft native Project Instructions — Clanker AI
 
+## Recovery checkpoint cadence for active Work or coding-agent runs
+
+Aim for a **2–3 minute recovery note when substantial in-flight state changes**, and checkpoint immediately at task dispatch, direct Jules feedback, test result, push/merge, handoff or blocker. Record task ID, branch/HEAD/tree, tests and their exact `PENDING`/`PASS` states, sole branch writer and safe next action. Do not generate empty Git commits, background tasks, duplicated jobs, or stale whole-file handoff writes merely to meet a time interval. GitHub's canonical handoff and task receipts are durable; user-visible progress can be lightweight. These are best-effort instructions while Work is running, not a persistent autonomous service.
+
+
 This is a proposed merged instruction text for owner review. It has **not** been applied to ChatGPT Project Settings. Live implementation status, receipts, approvals, blockers and next actions belong only in `docs/PROJECT_HANDOFF.md`.
 
 ## Identity and goal

@@ -1,5 +1,13 @@
 # AGENTS.md — Clanker AI operating rules
 
+## Adaptive interruption checkpoints — owner preference (2026-10-22)
+
+- During long, active Clanker Work/Codex/Jules coordination, **aim for a concise recovery checkpoint every ~2–3 minutes when material work has changed**, plus an **immediate checkpoint** after agent dispatch, exact-SHA review feedback, test run result, verified commit/merge, a consequential branch handoff or authorization/access gate. Treat this as **best-effort guidance during an active execution**, not a background timer, an SLA, or permission to create recurring jobs. If nothing meaningful changed, don't create a redundant checkpoint.
+- Checkpoint **in-flight state truthfully**: current main/branch/PR/task IDs, verified heads and output, what is still pending, exclusive writer, next safe resumable action, one-shot operation receipts, and blockers. Distinguish `PENDING` from `PASS`, a Jules self-report from independently tested results, and a delivered message from a fully incorporated correction.
+- Prefer a lightweight user-visible progress note for short-lived updates. For interruptions or handoffs, write **durable, scoped, non-conflicting** GitHub evidence into the canonical handoff or applicable task/PR comment, using exact SHA and expected-head lease. Make code commits only for meaningful, self-contained changes or explicit recovery preservation; **never commit every two minutes simply to satisfy a clock**. Avoid whole-file stale rewrites, duplicate Jules prompts, duplicate workflow runs and repeating consumed one-shot actions.
+- More frequent checkpoints preserve work but do **not** create unattended execution or grant cloud-browser access across chats. Read current GitHub handoff and receipts on resume; when execution ends, nothing continues automatically without an explicitly authorized scheduled task.
+
+
 ## Jules PR review fallback after missing read_pr_comments tool (2026-10-22)
 
 - On pilot #2, Jules's in-task diagnostic reported that the platform prompted `read_pr_comments` but the tool was **unavailable** and the review comment **content absent**. It then performed no source edits, with clean local status and repeated empty remote submissions. See `docs/JULES_FEEDBACK_INCIDENT.md` for what is Jules-reported versus independently verified.
