@@ -39,6 +39,12 @@ From a clean local agent feature branch, run `node scripts/check-agent-scope.cjs
 
 `node tests/agent-scope-check.cjs` was independently executed against six temporary Git history scenarios on Node v22.16.0 with git v2.47.3 (6/6 passed in the independent local execution environment); the remainder of Clanker's tests were not executed there. This reusable guard stays on draft PR #3 until approved for integration.
 
+### Advisory two-branch overlap preflight (provider-neutral)
+
+After fetching both candidate branches into an offline local Git checkout, run `node scripts/check-agent-overlap.cjs --base <common-accepted-main-SHA> --left <agent-branch> --right <reviewer-branch>`. The read-only script verifies both tips descend from the explicit common base, compares all paths changed on both sides (including both endpoints of file renames), and flags **any** same-file overlap and any change to canonical policy/status Markdown. Exit codes: 0 CLEAR, 2 NEEDS_REVIEW, 1 invalid refs/base/error. A CLEAR result is advisory, never a substitute for security, semantic conflicts or final tests.
+
+`node tests/agent-overlap.cjs` independently ran **8/8 PASS** using real Node.js v22.16.0 and Git v2.47.3 in temporary synthetic Git histories on 2026-10-22. Committed source blob SHAs match the independently tested local files. It neither contacts Jules nor launches GitHub workflows. This protocol and script are still proposed on **draft PR #3**, not active on `main`.
+
 ## Pilot acceptance
 
 The integration may be considered working for initial coding **only** after verified GitHub issue→Jules acceptance→PR. It may be considered reliable for two-way review only when PR comments lead to correctly incorporated feedback without losing reviewed changes. It may be considered autonomous across projects only after idempotent queue/trigger behavior, exact-SHA review, tested outcomes and hard gates are proven. Current outcome: **initial coding YES; bidirectional safe review NO; unattended cross-project orchestration NOT YET**.

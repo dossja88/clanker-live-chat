@@ -1,5 +1,14 @@
 # Clanker AI — canonical project handoff
 
+## Two-branch collision auditor — protected draft PR #3 (2026-10-22)
+
+- Added `scripts/check-agent-overlap.cjs` and `tests/agent-overlap.cjs`, a provider-neutral offline checker for two agents' candidate Git branches. It compares explicit common-base-to-HEAD changed file paths, including renames, and flags overlap or protected Markdown modifications before steward integration. It does not merge, push, or automatically allow policy changes.
+- **Actual independent Node/Git execution:** `node tests/agent-overlap.cjs` **PASS 8/8** on Node v22.16.0 and Git v2.47.3 in temporary local test repositories. GitHub object hashes match the byte-identical tested files (`67a5578fead7ad7a04396037cf00ecfc49174ac0`; `34eac2e3b090f6ab6a6f60728d908e2aad860940`).
+- These 8 passing guard tests are **not** evidence that the five Clanker gameplay/protocol test suites ran. The corrected Clanker candidate at this branch still needs full genuine Node verification; direct network checkout/download remains unavailable in the local test runtime. No cost, workflow, GitHub settings, authorization, Jules task, deployment or publication was changed.
+- The checker is advisory: GitHub does not run or enforce it automatically. It requires the base and both branch refs already present in a local Git checkout; no agent identity verification or semantic file-content merge is claimed.
+- **Next:** keep PR #2 Jules-owned and PR #3 independent/unmerged. Obtain corrected candidate's full Node test evidence, review actual overlapping paths/semantic differences, then evaluate approval-gated integration of only one correct implementation. The accepted `main` policy is unchanged until separately integrated.
+
+
 ## Provider-neutral offline scope guard — draft PR #3 (2026-10-22)
 
 - Added `scripts/check-agent-scope.cjs` and `tests/agent-scope-check.cjs` to the isolated review branch as a **non-networked advisory guard** for future Jules/Codex/Gemini/Cursor agents. It audits actual Git branch diffs and flags edits to protected policy/handoff Markdown by an agent in executor role, including file renames and dirty worktrees.

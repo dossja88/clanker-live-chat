@@ -2,6 +2,7 @@
 
 ## Shared Markdown ownership — proposed integration rule (2026-10-22)
 - **Optional offline preflight:** Run `node scripts/check-agent-scope.cjs --base <accepted-main-SHA> --role executor` on an agent-owned local checkout before submitting a coding PR; it flags protected Markdown edits. Integration stewards may use `--role steward` to report protected changes for semantic review. This is an advisory local check (no authentication or GitHub enforcement), and `node tests/agent-scope-check.cjs` exercises synthetic real-Git fixtures. No CI installation or branch protection is implied.
+- **Two-branch overlap audit:** Given locally available candidate refs from two agents and their common accepted base, run `node scripts/check-agent-overlap.cjs --base <SHA> --left <refA> --right <refB>`; exit 2 means overlapping file paths or protected Markdown edits require explicit steward review. A clean path result is not a semantic merge authorization. This currently runs only when invoked and cannot fetch branches, block GitHub pushes, or enforce merges.
 
 
 - **One authoritative branch:** For project policy and current status, only the accepted version on `main` is canonical. Copies of `AGENTS.md`, `README.md`, and `docs/PROJECT_HANDOFF.md` on task/review branches are **proposals**, not synchronized instructions for other branches. Before work, read current `main` and then the task branch; reconcile differences explicitly.
