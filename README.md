@@ -135,3 +135,19 @@ node tests/benchmark2048.cjs
 The CLI has a strict 1–1024 turn bound per invocation, runs only Clanker's own independent 2048 rules, and sends **no** network requests, Twitch chat, game inputs, video or audio. JSON output includes game tiles, score and a game/seeded-PRNG checkpoint but **no account, private viewer or API fields**. The headless game test validates pure game state, illegal move fail-closed behavior, seed reproducibility, and identical outcomes after serializing/restoring both the board and PRNG state. A seeded 1024-turn run reached the 2048 tile on **turn 1019, score 20792** in the isolated JavaScript test harness; this is a test of a local puzzle, not external play or a real Node process.
 
 For maintenance, **edit only `src/2048-core.cjs`'s marked engine block**. Then update the offline browser copy explicitly with `node scripts/sync-2048-core.cjs --write` and run `node scripts/sync-2048-core.cjs` to check exact parity. `tests/regression.cjs` additionally fails if the two copies diverge. No new dependencies, scheduling, accounts, billing, permissions, or cloud deployment. This is **Phase A groundwork**, not yet a persistent autonomous session supervisor. The canonical milestone status is in `docs/PROJECT_HANDOFF.md`.
+
+## Bounded autonomous session supervisor — portable Phase B foundation (2026-10-21)
+
+The browser-independent [2048 headless engine](src/2048-core.cjs) now has a **transactional, restartable session supervisor** in [`src/session-supervisor.cjs`](src/session-supervisor.cjs). It runs only approved bounded local 2048 games, storing the game, its seeded RNG state, phase, limit and revision together after each move. Creating a new supervisor over the same storage resumes an *already-approved* running game without a fresh human click; a saved owner STOP, win, loss or completed move cap stops all further moves even across restarts. Conflicting writes and malformed checkpoints fail closed. It does not create any process timer, cloud host, Twitch control, new game authorization, or public stream.
+
+The supervisor has a dependency-free in-memory transactional store and an **optional local-file adapter** with exclusive lock, revision checks, private-directory checks, file flush and atomic same-directory replacement. The local test CLI allows explicit owner-operated start/stop, status, and bounded finite run commands. The CLI's `--owner-local` is **not authentication for a network service** and must never be exposed remotely. No secrets, viewer identities or source conversation data appear in the game-only checkpoints.
+
+See [`docs/SESSION_SUPERVISOR.md`](docs/SESSION_SUPERVISOR.md) for the state diagram, commands, privacy and filesystem assumptions, and crash/lock recovery cautions. To verify on a real Node 20+ checkout:
+
+```sh
+node tests/supervisor2048.cjs
+node tests/headless2048.cjs
+node tests/regression.cjs
+```
+
+The complete new supervisor test ran in the connected isolated JavaScript harness with a mocked filesystem: **8/8 supervisor checks**; the existing browser regression remains **59/59** in its DOM/Node shim. A CLI run was simulated across start/250-step/restart/STOP/new approved session and finished seed 1 at move 1019, score 20792. **Actual Node CLI/filesystem integration, cloud deployment, devices, and public Twitch remain unverified.** The next meaningful work is an authenticated remote owner-control boundary and production-safe state transport, not another Xbox-hosted demo.
