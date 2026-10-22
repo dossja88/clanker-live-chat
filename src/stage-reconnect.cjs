@@ -73,23 +73,50 @@ function createStageReconnectReceiver({ epoch, authorizeOwner, maxEvents = 128 }
     }
     mutationInProgress = true;
     try {
-      // Envelope must be an object with exactly epoch and json
+      // Envelope must be a non-null plain object or null-prototype object
       if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {
         throw Error('Envelope must be a non-null plain object.');
       }
 
-      if (Object.prototype.hasOwnProperty.call(envelope, '__proto__') ||
-          Object.prototype.hasOwnProperty.call(envelope, 'constructor')) {
-        throw Error('Envelope contains forbidden prototype property.');
+      // Prototype check: prototype must be Object.prototype or null
+      const proto = Object.getPrototypeOf(envelope);
+      if (proto !== Object.prototype && proto !== null) {
+        throw Error('Envelope prototype must be Object.prototype or null.');
       }
 
-      const keys = Object.keys(envelope).sort();
-      if (keys.length !== 2 || keys[0] !== 'epoch' || keys[1] !== 'json') {
+      // ReflectorownKeys retrieves all string and symbol own property keys
+      const ownKeys = Reflect.ownKeys(envelope);
+      if (ownKeys.length !== 2) {
+        throw Error('Envelope must contain exactly two own properties ("epoch" and "json").');
+      }
+
+      const keySet = new Set(ownKeys);
+      if (!keySet.has('epoch') || !keySet.has('json')) {
         throw Error('Envelope must contain exactly "epoch" and "json" properties.');
       }
 
-      const envEpoch = envelope.epoch;
-      const envJson = envelope.json;
+      // Inspect property descriptors before accessing values
+      const epochDesc = Object.getOwnPropertyDescriptor(envelope, 'epoch');
+      const jsonDesc = Object.getOwnPropertyDescriptor(envelope, 'json');
+
+      if (!epochDesc || !jsonDesc) {
+        throw Error('Missing own property descriptors for envelope keys.');
+      }
+
+      // Must be enumerable data properties (not getters/setters)
+      if (!epochDesc.enumerable || !jsonDesc.enumerable) {
+        throw Error('Envelope keys "epoch" and "json" must be enumerable own data properties.');
+      }
+
+      if (Object.prototype.hasOwnProperty.call(epochDesc, 'get') ||
+          Object.prototype.hasOwnProperty.call(epochDesc, 'set') ||
+          Object.prototype.hasOwnProperty.call(jsonDesc, 'get') ||
+          Object.prototype.hasOwnProperty.call(jsonDesc, 'set')) {
+        throw Error('Envelope properties cannot be accessors/getters.');
+      }
+
+      const envEpoch = epochDesc.value;
+      const envJson = jsonDesc.value;
 
       if (!isValidEpoch(envEpoch)) {
         throw Error('Envelope epoch must be a positive safe integer.');

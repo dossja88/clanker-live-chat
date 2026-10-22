@@ -294,12 +294,9 @@ function runTests() {
     assert.throws(() => receiver.receive(null), /Envelope must be a non-null plain object/);
     assert.throws(() => receiver.receive([1, 2]), /Envelope must be a non-null plain object/);
 
-    // Prototype pollution attempt in envelope
-    assert.throws(() => receiver.receive(JSON.parse('{"epoch":1,"json":"{}","__proto__":{}}')), /Envelope contains forbidden prototype property/);
-
     // Extra keys
-    assert.throws(() => receiver.receive({ epoch: 1, json: '{}', extra: true }), /Envelope must contain exactly "epoch" and "json"/);
-    assert.throws(() => receiver.receive({ epoch: 1 }), /Envelope must contain exactly "epoch" and "json"/);
+    assert.throws(() => receiver.receive({ epoch: 1, json: '{}', extra: true }), /Envelope must contain exactly two own properties/);
+    assert.throws(() => receiver.receive({ epoch: 1 }), /Envelope must contain exactly two own properties/);
 
     // Invalid epoch type
     assert.throws(() => receiver.receive({ epoch: '1', json: '{}' }), /Envelope epoch must be a positive safe integer/);
@@ -518,6 +515,121 @@ function runTests() {
     // Guard released, normal receive still works
     const accepted = receiver.receive({ epoch: 1, json: sample1.json });
     assert.strictEqual(accepted.revision, 1);
+  });
+
+  // 16. Strict prototype & descriptor validations (CLANKER-REVIEW-3-R2)
+  test('reject Date or custom class instance as envelope', () => {
+    const { obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    const receiver = Reconnect.createStageReconnectReceiver({ epoch: 1, authorizeOwner: () => true });
+
+    // Date instance containing epoch and json
+    const dateEnvelope = Object.assign(new Date(), { epoch: 1, json: sample1.json });
+    assert.throws(() => receiver.receive(dateEnvelope), /Envelope prototype must be Object.prototype or null/);
+
+    // Custom class instance
+    class CustomEnvelope {
+      constructor(epoch, json) {
+        this.epoch = epoch;
+        this.json = json;
+      }
+    }
+    const customInstance = new CustomEnvelope(1, sample1.json);
+    assert.throws(() => receiver.receive(customInstance), /Envelope prototype must be Object.prototype or null/);
+
+    // State preserved
+    assert.strictEqual(receiver.getLatest(), null);
+  });
+
+  test('reject non-enumerable or symbol own properties on envelope', () => {
+    const { obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    const receiver = Reconnect.createStageReconnectReceiver({ epoch: 1, authorizeOwner: () => true });
+
+    // Hidden non-enumerable property
+    const hidden = { epoch: 1, json: sample1.json };
+    Object.defineProperty(hidden, 'command', { value: 'rotate', enumerable: false });
+    assert.throws(() => receiver.receive(hidden), /Envelope must contain exactly two own properties/);
+
+    // Symbol own property
+    const symEnv = { epoch: 1, json: sample1.json };
+    symEnv[Symbol('extra')] = 'extra';
+    assert.throws(() => receiver.receive(symEnv), /Envelope must contain exactly two own properties/);
+
+    // State preserved
+    assert.strictEqual(receiver.getLatest(), null);
+  });
+
+  test('reject getter/accessor properties on envelope without invoking getter', () => {
+    const { obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    const receiver = Reconnect.createStageReconnectReceiver({ epoch: 1, authorizeOwner: () => true });
+
+    let getterCalled = false;
+    const getterEnvelope = {
+      epoch: 1,
+      get json() {
+        getterCalled = true;
+        return sample1.json;
+      }
+    };
+
+    assert.throws(() => receiver.receive(getterEnvelope), /Envelope properties cannot be accessors\/getters/);
+    assert.strictEqual(getterCalled, false, 'Getter must NOT be invoked during envelope validation');
+
+    // State preserved
+    assert.strictEqual(receiver.getLatest(), null);
+  });
+
+  test('accept valid null-prototype envelope (Object.create(null))', () => {
+    const { obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    const receiver = Reconnect.createStageReconnectReceiver({ epoch: 1, authorizeOwner: () => true });
+
+    const nullProtoEnvelope = Object.create(null);
+    nullProtoEnvelope.epoch = 1;
+    nullProtoEnvelope.json = sample1.json;
+
+    const accepted = receiver.receive(nullProtoEnvelope);
+    assert.strictEqual(accepted.revision, 1);
+    assert.strictEqual(receiver.getLatest().revision, 1);
+  });
+
+  test('preserve state atomically across R2 envelope rejections and permit subsequent valid receives', () => {
+    const { supervisor, obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    const receiver = Reconnect.createStageReconnectReceiver({ epoch: 1, authorizeOwner: () => true });
+
+    const accepted1 = receiver.receive({ epoch: 1, json: sample1.json });
+    const status1 = receiver.status();
+
+    // Rejection 1: Date prototype
+    assert.throws(() => receiver.receive(Object.assign(new Date(), { epoch: 1, json: sample1.json })));
+    assert.deepStrictEqual(receiver.status(), status1);
+
+    // Rejection 2: Hidden non-enumerable key
+    const hidden = { epoch: 1, json: sample1.json };
+    Object.defineProperty(hidden, 'command', { value: 'rotate', enumerable: false });
+    assert.throws(() => receiver.receive(hidden));
+    assert.deepStrictEqual(receiver.status(), status1);
+
+    // Rejection 3: Symbol own key
+    const sym = { epoch: 1, json: sample1.json };
+    sym[Symbol('test')] = 123;
+    assert.throws(() => receiver.receive(sym));
+    assert.deepStrictEqual(receiver.status(), status1);
+
+    // Valid next step succeeds
+    supervisor.tick();
+    const sample2 = obs.sample(1010);
+    const accepted2 = receiver.receive({ epoch: 1, json: sample2.json });
+    assert.strictEqual(accepted2.revision, 2);
+    assert.strictEqual(receiver.status().currentEpochSequence, 2);
   });
 
   console.log(`\nALL ${passedCount} STAGE RECONNECT TESTS PASSED.`);
