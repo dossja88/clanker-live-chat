@@ -1,8 +1,17 @@
 # Jules collaboration and concurrency contract — Clanker pilot
 
+## Verified coding/review/integration path
+
+The pilot #3 task proved direct in-task review incorporation **twice**, followed by independent actual Node verification and accepted PR #8 integration. Exact commits, trees, merge receipts and limits are in the canonical handoff. Both prior PR-feedback failures remain valid historical evidence; the successful path supplied the actual review text through Talk to Jules rather than relying on `read_pr_comments`.
+
+Use the operating procedure below for future suitable authorized assignments. Keep one writer per Jules branch; pin review and merge to exact GitHub heads. A changed tree must contain the intended source/test correction and pass semantic review, not merely documentation changes. Use `node scripts/run-offline-tests.cjs` for the full local suite and require both exit 0 and the explicit final `PASS n/n offline suites` summary. Focused negative probes remain necessary when existing green tests miss a defect.
+
+This is an active-session steward workflow. No persistent dispatcher, automatic PR-feedback retrieval, required GitHub check or unattended merge worker is installed. Check current included/free quota before creating a task; the account-wide session meter is not a per-task cost ledger. Native Project Instructions have only a reviewable draft at `docs/PROJECT_INSTRUCTIONS_DRAFT.md`.
+
+
 ## Direct browser collaboration — verified operating procedure
 
-The 2026-10-22 diagnostic exchange in existing task `7200037830362515152` proved direct ChatGPT Work → Talk to Jules → Jules report retrieval without owner prompt/answer relay. It did **not** prove corrective coding or unattended orchestration. Evidence and limits: [JULES_FEEDBACK_INCIDENT.md](JULES_FEEDBACK_INCIDENT.md); current status remains in the canonical handoff.
+The 2026-10-22 diagnostic exchange in existing task `7200037830362515152` proved direct ChatGPT Work → Talk to Jules → Jules report retrieval without owner prompt/answer relay. That initial diagnostic exchange alone did **not** prove corrective coding or unattended orchestration; pilot #3 subsequently proved two direct corrective cycles, while unattended orchestration remains unverified. Evidence and limits: [JULES_FEEDBACK_INCIDENT.md](JULES_FEEDBACK_INCIDENT.md); current status remains in the canonical handoff.
 
 1. **Recover:** Read live main instructions/handoff and exact task/PR receipts. Confirm the task suits the original scope, current authorization, branch ownership and free-use limits. A closed superseded PR is diagnosis-only unless separately authorized; never recreate a job to repeat integrated fixes.
 2. **Send once:** Use an existing authenticated cloud-browser task. Include a unique receipt, reviewed SHA, complete non-sensitive review text, reproduction, expected behavior, allowed paths, and explicit action limits. A link or notification alone may omit the actual feedback. Never send secrets, private viewer records or credentials.
@@ -91,4 +100,4 @@ After fetching both candidate branches into an offline local Git checkout, run `
 
 ## Pilot acceptance
 
-The integration may be considered working for initial coding **only** after verified GitHub issue→Jules acceptance→PR. It may be considered reliable for two-way review only when PR comments lead to correctly incorporated feedback without losing reviewed changes. It may be considered autonomous across projects only after idempotent queue/trigger behavior, exact-SHA review, tested outcomes and hard gates are proven. Current outcome: **GitHub issue→Jules coding PR YES; independently corrected, Node-verified integration YES; Jules autonomous review-response loop NOT YET; unattended cross-project orchestration NOT YET**. The successful merge required an independent integration steward.
+The integration may be considered working for initial coding **only** after verified GitHub issue→Jules acceptance→PR. It may be considered reliable for two-way review only when PR comments lead to correctly incorporated feedback without losing reviewed changes. It may be considered autonomous across projects only after idempotent queue/trigger behavior, exact-SHA review, tested outcomes and hard gates are proven. Current outcome: **GitHub issue→Jules coding PR YES; direct browser task dispatch YES; same-task direct-chat review→Jules corrective commits YES (two verified rounds); independent Node verification and steward integration YES; automatic GitHub-comment retrieval NOT RELIABLE; unattended cross-project orchestration NOT VERIFIED**. The successful merge required an independent integration steward.

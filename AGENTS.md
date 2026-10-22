@@ -103,7 +103,7 @@ These are project-specific instructions; they supplement, never replace, the use
 
 ## Development and verification rules
 
-- For routine source changes, use the repository's zero-dependency `node tests/regression.cjs` runner first. Require the built-in checks and simulated chat/OAuth/EventSub paths to pass. Distinguish execution in real Node.js from a connector-isolate JavaScript shim, and do not claim a live browser or Twitch validation unless actually performed. The runner is *manual CLI*, not installed CI.
+- For routine source changes, use the repository's zero-dependency `node tests/regression.cjs` runner first. Full local verification is available through `node scripts/run-offline-tests.cjs`; require its complete final PASS summary as well as exit 0. This manual runner installs no CI or scheduler. Require the built-in checks and simulated chat/OAuth/EventSub paths to pass. Distinguish execution in real Node.js from a connector-isolate JavaScript shim, and do not claim a live browser or Twitch validation unless actually performed. The runner is *manual CLI*, not installed CI.
 - **Standing owner decision (2026-10-20):** Routine reversible, safely scoped GitHub development and documentation work is preauthorized. Exercise bounded creative discretion, implement/test/commit directly, and ask only for genuine gates or meaningful owner review. Existing permissions, billing-disabled, private data, stream/publication, game-control and cost boundaries remain in force. Never translate this into unlimited changes or non-GitHub external actions.
 
 
