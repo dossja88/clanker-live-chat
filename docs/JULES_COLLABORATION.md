@@ -1,5 +1,14 @@
 # Jules collaboration and concurrency contract — Clanker pilot
 
+## Jules session utilization and coordination
+
+**Single coordination lane:** During the Clanker integration pilot, only one steward-coordinated GitHub workstream launches coding tasks or integrates changes at a time. Another ChatGPT/Codex/Gemini conversation may discuss or review, but must check `main`, the canonical handoff and current task/PR receipts before writable work. Keep one writer per feature branch.
+
+**Reuse-first lifecycle:** Inventory existing Jules task links, actual session status where available, scope, PR and branch SHA before starting a new Jules job. If Jules confirms an active/paused resumable task is suited to its original work, use the task conversation and existing PR feedback for corrections, offline tests and finishing work. Avoid wasting a new task on status checking or restarting an already completed step. Preserve task logs, patches and review findings when complete. A completed or closed PR is **not proof that Jules can still work in that session**, so do not treat it as an endlessly reusable agent; use one new scoped task only if the current task is unsuitable or finished. Never repeat the first pilot's issue-label trigger just to revive PR #2.
+
+**First pilot receipt:** https://jules.google.com/task/7194871727713726446 → original issue #1 and PR #2 (closed, unmerged); corrected implementation was integrated through PR #3. Jules's independent session state is **unverified** by the GitHub read connection. No new Jules task, scheduler, proactivity feature or fee is authorized merely by this documentation.
+
+
 **Scope:** This is a reusable execution/safety procedure for the single Jules task tied to GitHub issue #1 and PR #2. Canonical project decisions, permissions and current status remain in `AGENTS.md` and **only** `docs/PROJECT_HANDOFF.md`.
 
 ## Proven end-to-end components
