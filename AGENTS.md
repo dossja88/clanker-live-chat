@@ -1,5 +1,14 @@
 # AGENTS.md — Clanker AI operating rules
 
+
+## Clanker coordination and Jules reuse — owner decision (2026-10-22)
+
+- During the GPT–Jules interoperability pilot, use one coordinated, GitHub-recorded **writable** Clanker development workstream. Other chats and agents may offer ideas or read-only reviews. Before editing or dispatching, consult live `main`, the canonical handoff, active tasks/PRs and branch ownership. Avoid two chats independently writing the same project or shared Markdown. This is a temporary coordination practice, not a ban on discussing Clanker elsewhere.
+- Reuse an existing Jules task for original-scope clarifications, testing, revisions and reviewer feedback **when its Jules session is confirmed active or resumable**. Preserve task links, SHA receipts and test evidence; do not launch duplicate jobs or re-apply an already consumed `jules` issue-label trigger.
+- A completed task or closed PR is not proof of an available Jules worker or current checkout. Verify task status and suitability before attempting further work. Do not repurpose a completed task for a materially new feature solely to avoid task creation. When genuinely needed, dispatch one newly scoped task after verifying that no suitable existing task remains.
+- Do not enable Jules scheduling, proactivity, billing or paid features merely to increase utilization. Continue all existing single-writer, consent, STOP, privacy, merge and publication safeguards. The first Jules task's PR #2 is closed unmerged; the corrected code is integrated through PR #3. Its Jules UI session state remains unverified through GitHub alone.
+
+
 ## Shared Markdown ownership — accepted integration protocol (2026-10-22)
 - **Optional offline preflight:** Run `node scripts/check-agent-scope.cjs --base <accepted-main-SHA> --role executor` on an agent-owned local checkout before submitting a coding PR; it flags protected Markdown edits. Integration stewards may use `--role steward` to report protected changes for semantic review. This is an advisory local check (no authentication or GitHub enforcement), and `node tests/agent-scope-check.cjs` exercises synthetic real-Git fixtures. No CI installation or branch protection is implied.
 - **Two-branch overlap audit:** Given locally available candidate refs from two agents and their common accepted base, run `node scripts/check-agent-overlap.cjs --base <SHA> --left <refA> --right <refB>`; exit 2 means overlapping file paths or protected Markdown edits require explicit steward review. A clean path result is not a semantic merge authorization. This currently runs only when invoked and cannot fetch branches, block GitHub pushes, or enforce merges.
