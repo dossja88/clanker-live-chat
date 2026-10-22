@@ -1,5 +1,16 @@
 # Jules feedback no-op commit investigation — Clanker pilot, 2026-10-22
 
+## Owner-observed Jules task UI — new evidence (2026-10-22)
+
+**Provenance:** The owner copied unformatted text directly from the existing Jules task page `7200037830362515152` into ChatGPT. This is valuable **user-provided first-party interface evidence**, but no authenticated Jules activity API was called and no per-command execution logs were obtained.
+
+- Task screen identifies branch `jules-7200037830362515152-27dcd84d`. Its initial plan includes creating the 4 replay files, running eight Node suites, and precommit review; activity records `Updated src/offline-stage-replay.cjs` and `Updated docs/STAGE_REPLAY.md, scripts/run-offline-stage-replay.cjs, tests/stage-replay.cjs` **once**, followed by initial Node-suite success and `Ready for review`.
+- Subsequent displayed states repeat `Ready for review 🎉`, **+536 / -0**, same four-file/8-suite summary, and `Time: 12 mins`, without visible new file-update, new test-run, or correction steps following the independent GitHub PR feedback. Entries appear around owner-local October 21 22:59, 23:14 and 23:35; display formatting and time grouping were flattened by copy/paste.
+- Jules UI reports internal `HEAD da9b938ce99d2d12b4c219fc540e194f82ccefe8` in later ready-for-review summaries. GitHub commit lookup for this exact SHA returned HTTP **422 No commit found**, while GitHub PR #5 lists initial `a888e1a` followed by three empty-tree bot commits `704f7ede`, `151b5b5`, `a140ae1`. Jules's displayed HEAD is **not a publicly resolvable commit in this repository**. This might be an internal VM/workspace commit or a different export identity; it is not evidence of corruption by itself.
+- **Revised leading explanation:** The task interface appears to be **reissuing its original accepted submission**, instead of showing a new editing/retesting step responsive to the review. This aligns with identical original diff counts and identical published Git trees across three follow-ups. Stronger than GitHub-only evidence, but **still does not prove** whether Jules attempted edits in a hidden operation, failed to stage, or published a stale snapshot. The lack of visible edit entries is a diagnostic clue, not proof of no internal edits.
+- **Next discriminating step, no new task:** In the same task's `Talk to Jules` area, ask for a *read-only diagnostic explanation* of whether PR feedback comments/review were linked to actual code-edit activities, the displayed internal HEAD versus GitHub PR SHAs, and whether Git staging/diff logs show modifications. The task is completed and PR #5 is closed with corrected implementation already integrated elsewhere; **do not reopen PR #5, commit/push old changes, change settings, or create a new Jules job** simply to diagnose. Ask for exact evidence and an explicit `unknown` when a log is inaccessible. Once the owner provides the response, update this record with independently cross-checkable conclusions.
+
+
 **Status:** Reproducible **GitHub-visible Jules response/publishing failure**, *not* a definitive diagnosis of Jules's inaccessible internal editing, staging, or publishing step. No new Jules task or service was started. This research does not claim that Google has confirmed an outage affecting these exact sessions.
 
 ## Exact public evidence

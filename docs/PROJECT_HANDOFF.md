@@ -1,5 +1,11 @@
 # Clanker AI — canonical project handoff
 
+## Jules task-page activity copied by owner — follow-up diagnosis (2026-10-22)
+
+- User supplied text from the authenticated existing Jules task #7200037830362515152 showing **only the original** 4-file implementation, one described Node verification, then repeated `Ready for review` states with the **same +536 / -0** diff and unchanged completion summary; no visibly new edit/test events for the corrections. Later task UI reports internal HEAD `da9b938ce99d2d12b4c219fc540e194f82ccefe8`; direct GitHub lookup of that SHA fails (HTTP 422, not a public repository commit) while PR #5 actually contained `a888e1a` plus three zero-file bot commits. This strengthens the **stale/original submission replay** hypothesis, but internal root cause remains unproven without Jules activities/logs.
+- Public evidence and provenance separated in [`docs/JULES_FEEDBACK_INCIDENT.md`](JULES_FEEDBACK_INCIDENT.md). Next user-supported step: use the *existing* task's `Talk to Jules` input for **diagnosis only** (not a new task/commit) and ask whether review comments triggered actual file edits, diff/staging and export. Do not reopen already superseded PR #5; Jules's original useful work and tested corrections are accepted on `main` through PR #6. No billing, new task or credentials.
+
+
 ## Read-only committed stage observer — accepted local milestone (2026-10-22)
 
 - **Accepted on main:** [PR #7](https://github.com/dossja88/clanker-live-chat/pull/7) was independently implemented on reviewer-owned branch `review/clanker-read-only-stage-observer`, verified and squash-merged to `main` as [`ebd98b92a146721bfbf36b3c4849e07abdbf9a96`](https://github.com/dossja88/clanker-live-chat/commit/ebd98b92a146721bfbf36b3c4849e07abdbf9a96). New `src/read-only-stage-observer.cjs` (Git blob `0bdfdf6dc003dd74aac54a698950f3d08af72168`), `tests/read-only-stage-observer.cjs` (`b534e5aa3917eb27e7864fc770d0d9f9975427ab`) and `docs/STAGE_OBSERVER.md`. This new work was intentionally separate from Jules pilot task branches; no Jules task or label was started/restarted.
