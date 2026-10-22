@@ -1,5 +1,16 @@
 # Clanker AI — canonical project handoff
 
+
+## Shared-workflow pilot #3 active — one authorized new task (2026-10-22)
+
+- **Owner scope expansion:** Owner expressly authorized the work needed to establish full integration/shared workflow after the diagnostic milestone. This permits a new bounded coding/review assignment; it supersedes the prior investigation-only/no-new-task limit for this assignment. Existing $0, secrets, permissions, production/broadcast and single-writer boundaries remain. No old task or closed PR was reopened.
+- **Single dispatch receipt:** [Jules task 11143445434490015377](https://jules.google.com/session/11143445434490015377), receipt `CLANKER-INTEGRATION-3-20261022`, created once directly in authenticated Jules UI against selected `main` (base `42c4d5b58cbe7b93609d45778bd724bb43516404`). UI confirmed Task created and free daily session meter changed 3/15 → 4/15. No issue-label dispatch. Previous two pilot sessions were Completed; GitHub showed no open PR.
+- **Assigned useful scope:** Jules exclusively owns new branch implementing only `src/stage-reconnect.cjs`, `tests/stage-reconnect.cjs`, `docs/STAGE_RECONNECT.md`: offline trusted epoch rotation, strict fenced read-only stage receiving, sequence restart with preserved revision/state/STOP/time floors, immutable output, atomic failures and lifetime cap. No existing code/protected docs/HTML, CI, dependencies, network service, cloud, OAuth, Drive or Twitch changes.
+- **Acceptance:** initial Jules code/PR → independent exact-SHA Node review → direct Talk to Jules feedback → Jules-owned genuine corrective code/test diff → independent verification and steward integration. Task creation alone is not successful coding or full integration. No background orchestrator is claimed.
+- **Independent executor:** local repository clone succeeded at exact base; genuine Node v24.19.0 available, no package installation. Baseline ten-suite run started; result pending at this checkpoint.
+- **NEXT ACTION:** Inspect this SAME Jules task for plan/code/completion, allow multi-minute response latency, fetch its own branch/PR for independent review and send review text directly. Never create another task to check status. Steward alone updates canonical handoff; no reviewer pushes onto Jules branch.
+
+
 ## Jules collaboration procedure consolidated (2026-10-22)
 
 - **Base:** `main` at `15b108a8c6862d7e4a07b49e38c639c6745a328a`. Updated the existing collaboration guide with the verified same-task send/wait/report-card/read-without-publication procedure, receipt-based interruption recovery and a reusable diagnostic message shape. Corrected its outdated first-pilot-only scope and pre-integration history wording.
