@@ -1,5 +1,13 @@
 # Clanker AI — canonical project handoff
 
+## Provider-neutral offline scope guard — draft PR #3 (2026-10-22)
+
+- Added `scripts/check-agent-scope.cjs` and `tests/agent-scope-check.cjs` to the isolated review branch as a **non-networked advisory guard** for future Jules/Codex/Gemini/Cursor agents. It audits actual Git branch diffs and flags edits to protected policy/handoff Markdown by an agent in executor role, including file renames and dirty worktrees.
+- **Independently tested:** `node tests/agent-scope-check.cjs` PASS (6/6) using Node.js v22.16.0 and Git v2.47.3 in synthetic temporary repos. This is an actual Node CLI test of this NEW guard, **not** the five pending Clanker game/protocol suites.
+- The guard is not a GitHub permission, branch protection, identity check, automatic workflow, semantic conflict resolver, or mandatory CI job. No schedule, credentials, integration trigger, deployment, paid service or main-branch changes were made.
+- **Next:** Confirm the committed source exactly matches the independently tested script and that draft PR #3 remains isolated; then arrange actual Clanker protocol-suite verification and explicit eventual integration without giving two agents write authority over one branch.
+
+
 ## Proposed Markdown single-writer protocol — draft PR #3 (2026-10-22)
 
 - Responding to owner concern about agents overwriting `.md` files: existing per-branch writer separation is necessary but insufficient for shared project policy and handoff documents. This review branch now proposes explicit role-based stewardship of `AGENTS.md` and the one canonical `docs/PROJECT_HANDOFF.md`, with coding-agent results delivered by SHA-linked PR comments or clearly labeled candidate diffs.

@@ -32,6 +32,13 @@
 
 For the present pilot: PR #2 is Jules-owned and PR #3 is reviewer-owned. Neither is integrated. The canonical `main` documents **do not yet include these rules**. This procedure is a proposal for adoption, not proof that GitHub will enforce it.
 
+
+### Optional offline scope guard (proposed)
+
+From a clean local agent feature branch, run `node scripts/check-agent-scope.cjs --base <accepted-main-SHA> --role executor` to check for edits to `AGENTS.md`, `README.md`, `docs/PROJECT_HANDOFF.md`, and this collaboration guide. The executor role exits 2 if protected documentation was changed, 1 for an invalid/dirty checkout, 0 if the path check passes. The `steward` role reports these changes but exits 0 so a human/agent can review meaning and approvals. This is only an **advisory diff scope check**: it does not prove reviewer identity, prevent commits, enforce branch ownership, or resolve semantic conflicts. It must never substitute for the mandatory exact-SHA and cross-PR review.
+
+`node tests/agent-scope-check.cjs` was independently executed against six temporary Git history scenarios on Node v22.16.0 with git v2.47.3 (6/6 passed in the independent local execution environment); the remainder of Clanker's tests were not executed there. This reusable guard stays on draft PR #3 until approved for integration.
+
 ## Pilot acceptance
 
 The integration may be considered working for initial coding **only** after verified GitHub issue→Jules acceptance→PR. It may be considered reliable for two-way review only when PR comments lead to correctly incorporated feedback without losing reviewed changes. It may be considered autonomous across projects only after idempotent queue/trigger behavior, exact-SHA review, tested outcomes and hard gates are proven. Current outcome: **initial coding YES; bidirectional safe review NO; unattended cross-project orchestration NOT YET**.

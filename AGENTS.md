@@ -1,6 +1,8 @@
 # AGENTS.md — Clanker AI operating rules
 
 ## Shared Markdown ownership — proposed integration rule (2026-10-22)
+- **Optional offline preflight:** Run `node scripts/check-agent-scope.cjs --base <accepted-main-SHA> --role executor` on an agent-owned local checkout before submitting a coding PR; it flags protected Markdown edits. Integration stewards may use `--role steward` to report protected changes for semantic review. This is an advisory local check (no authentication or GitHub enforcement), and `node tests/agent-scope-check.cjs` exercises synthetic real-Git fixtures. No CI installation or branch protection is implied.
+
 
 - **One authoritative branch:** For project policy and current status, only the accepted version on `main` is canonical. Copies of `AGENTS.md`, `README.md`, and `docs/PROJECT_HANDOFF.md` on task/review branches are **proposals**, not synchronized instructions for other branches. Before work, read current `main` and then the task branch; reconcile differences explicitly.
 - **Policy owner:** A designated integration reviewer/steward owns accepted changes to `AGENTS.md`, global command semantics, approval/permission boundaries, and the canonical handoff. A coding agent (including Jules) may propose policy changes via its PR or discussion, but must not silently change owner rules or treat a task-branch policy as globally effective.
