@@ -1,5 +1,13 @@
 # Clanker AI — canonical project handoff
 
+## First direct Jules correction verified; second contract review active (2026-10-22)
+
+- **End-to-end correction succeeded:** same task `11143445434490015377` acknowledged direct `CLANKER-REVIEW-3-R1`, edited source/tests/docs and published genuine descendant `7fbf4723b77b79209409a7c5eda8b4f6f4972de3` to PR #8. Initial tree `aa253c78c9f2a0d238cff4590b3766282dff4d9e` → corrected tree `f6d107bdd69919500b83228342fda62e9e987e75`; GitHub compare ahead by 1, three changed paths, +222/-83. Local advisory feedback-diff reports CHANGED. No reviewer pushed onto Jules branch, no owner relay.
+- **Independent actual Node v24.19.0/Git 2.51.1:** all eleven suites PASS on both initial and R1 candidates; R1 reconnect suite **19/19**. Extra real Node original failure/recovery, getter and Proxy reentrancy probes PASS after shared mutation guard. Jules separately reports Node v22.22.1 all-suite PASS. Reconciled report's internal/base HEAD ambiguity using actual exported GitHub trees, not its claimed local identity.
+- **Final review issue reproduced:** R1 still accepts Date/custom-prototype envelopes and hidden/symbol own properties despite strict plain two-field contract. No actuation observed; schema correctness only. Direct `CLANKER-REVIEW-3-R2` sent once to SAME task requesting prototype/Reflect.ownKeys/data-descriptor validation, non-invoked accessor tests, null-prototype positive path, failure recovery and explicit in-memory-only restart limitation in documentation.
+- **NEXT ACTION:** Wait for R2 acknowledgement/corrective descendant on PR #8, independently fetch/retest exact head, then steward-integrate only if all acceptance conditions pass. Do not dispatch another task, publish unchanged tree or touch old PRs. Initial/R1 implementations remain unmerged pending R2. Durable task/review receipts enable interruption recovery.
+
+
 
 ## Shared-workflow pilot #3 active — one authorized new task (2026-10-22)
 
