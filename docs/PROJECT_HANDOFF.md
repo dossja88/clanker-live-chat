@@ -1,5 +1,13 @@
 # Clanker AI — canonical project handoff
 
+## Jules pilot draft-review fallback — 2026-10-22
+
+- **Review PR:** [#3](https://github.com/dossja88/clanker-live-chat/pull/3) is a **DRAFT** from `review/clanker-stage-protocol-v1` to `main`, opened to preserve independently verified code and the new exclusive-branch-writer instructions without touching the Jules task branch.
+- **Jules PR:** [#2](https://github.com/dossja88/clanker-live-chat/pull/2) remains open, unmerged and **known uncorrected** at `e65363952279debbf362d31d41ef23727f443f4d`; Jules has not supplied a successful genuine-Node run of the corrected candidate or demonstrated reliable incorporation of PR feedback.
+- **Validation boundary:** Actual Node.js v22.16.0 exists in the independent execution environment, but GitHub clone/archive retrieval failed because that environment cannot resolve/retrieve GitHub. Therefore **no full Node CLI suites were run on PR #3**; earlier nine protocol-category V8/CommonJS-shim passes are not equivalent. No GitHub Actions workflow currently exists, and no new paid infrastructure, workflow or task was started to work around this restriction.
+- **Integration pilot results:** GitHub issue→Jules task creation **verified**, Jules task→PR **verified**, review correction preservation and draft PR **verified**, correct automatic Jules feedback incorporation **FAILED IN PILOT**, exact-SHA independent full Node validation **PENDING**, unattended multi-repository cycle **NOT VERIFIED**.
+- **Next:** Obtain a real Node CLI report for *this candidate commit* through an already-authorized runner, review the complete diff, reconcile PR #2 vs draft PR #3 without concurrent branch writes, and keep deployment/merge gated. Do not accidentally promote two competing PRs.
+
 ## Jules pilot integration checkpoint — single-writer recovery (2026-10-22)
 
 - **Pilot scope:** GitHub issue [#1](https://github.com/dossja88/clanker-live-chat/issues/1) labeled `jules` successfully created one Jules coding task ([task](https://jules.google.com/task/7194871727713726446)), which opened [PR #2](https://github.com/dossja88/clanker-live-chat/pull/2). GitHub→Jules task acceptance and PR creation are observed end-to-end.
