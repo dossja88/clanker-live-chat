@@ -1,5 +1,13 @@
 # Clanker AI — canonical project handoff
 
+## Actual Jules/reviewer branch overlap — 2026-10-22
+
+- Compared exact live GitHub refs against common `main` base `5824afa18c77c8dd5ef4426979cdb7e7ab5eb756`: Jules PR #2 at `e65363952279debbf362d31d41ef23727f443f4d` and review draft PR #3 at `b56cb6636a3702833eed9f0621c9fe5238a66839`.
+- Both candidates change **five common paths**: `docs/CLEAN_STAGE.md`, `docs/CLOUD_AUTONOMY_PLAN.md`, `docs/PROJECT_HANDOFF.md`, `src/stage-protocol.cjs`, and `tests/protocol2048.cjs`. This is overlapping scope that **requires explicit semantic reconciliation**; it is not necessarily a textual merge conflict. Reviewer branch additionally changes `AGENTS.md` and `docs/JULES_COLLABORATION.md`, both proposed policy files.
+- **Verified safety tests:** `node tests/agent-scope-check.cjs`: 6/6 PASS; `node tests/agent-overlap.cjs`: 8/8 PASS; real Node v22.16.0 and Git v2.47.3, local synthetic histories. Verified Git blob hash equality for new overlap checker and tests. Actual Node gameplay/protocol five-suite verification for review PR #3 remains **PENDING** because the isolated local runner cannot fetch full remote repository content.
+- **Safe next step:** Keep Jules PR #2 and review PR #3 unmerged; do not auto-merge overlapping files or generalize either branch's Markdown as accepted policy. Reconcile the five paths under single-writer stewardship only after full candidate-specific Node tests and verify the final diff against the latest `main`. No new Jules task, CI workflow, cloud hosting, cost, OAuth, Twitch, Drive, publication or permissions change was authorized/executed in this checkpoint.
+
+
 ## Two-branch collision auditor — protected draft PR #3 (2026-10-22)
 
 - Added `scripts/check-agent-overlap.cjs` and `tests/agent-overlap.cjs`, a provider-neutral offline checker for two agents' candidate Git branches. It compares explicit common-base-to-HEAD changed file paths, including renames, and flags overlap or protected Markdown modifications before steward integration. It does not merge, push, or automatically allow policy changes.
