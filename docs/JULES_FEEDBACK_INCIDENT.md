@@ -1,5 +1,25 @@
 # Jules feedback no-op commit investigation — Clanker pilot, 2026-10-22
 
+## Delayed direct Jules reply received — two-way diagnostic exchange verified (2026-10-22)
+
+**Correction to the immediately preceding checkpoint:** The owner explained that Jules normally takes several minutes. ChatGPT waited without further messages; the existing task then returned a report explicitly acknowledging **both** `CLANKER-DIAG-20261022-A` and `CLANKER-DIAG-20261022-B`. The earlier short wait was insufficient to classify a response/access gate. The messages were processed; no additional task, credential, permission or billing change was needed. This is an observed browser → Jules → browser diagnostic exchange, with no owner-relayed prompt or answer.
+
+The report appeared in a new **Ready for review / Commit message** card, retaining +536/-0, rather than a normal chat bubble. Reading that card requires no publish action. Do not click publish merely to receive a diagnostic answer. The UI's Thinking indicator ending is not a reliable completion signal; inspect for a later report card and allow several minutes before judging failure. No fixed response-time SLA is established.
+
+**Jules's fresh reported findings (directly observed UI report, not independent execution inside its VM):**
+- `read_pr_comments` is absent from its current declared tools; no invocation/error trace exists because it was not declared or called. Relevant declared mechanisms include `run_in_bash_session`, `read_file` and `submit`. This is evidence of Jules's reported current environment, not an independently retrieved tool-registry dump.
+- It quotes the generic PR notification directing use of `read_pr_comments` and says neither comment bodies nor inline review text were attached.
+- Reported `git status --short`, `git diff --stat` and `git diff --cached --stat` are empty. `git rev-parse HEAD HEAD^{tree}` returns `da9b938ce99d2d12b4c219fc540e194f82ccefe8` and `5ea977567c323764fe761d39ab8853c01b27600b`. Its log shows that local commit over base `bcf0b07cef39d39e38dcf0f9ca06cdf0d99de429`. The reported tree exactly matches the independently verified GitHub original and three no-op commits.
+- Jules explicitly corrects its earlier certainty: backend handling of unchanged submissions is **inference**; backend server logs are not available inside its sandbox. Local/remote identity differences alone do not prove the publishing implementation.
+- It confirms direct prompt text can carry review assertions for local analysis/action. Actual code correction through this fallback was **not requested or tested** because this feature is already integrated and the current authorization is diagnostic-only.
+
+**Independent post-response check:** PR #5 remained closed/unmerged at `a140ae1b9769c173f77aaffc8490e426303acb4c`; no new remote commit was created by the diagnostic report at this check.
+
+**Repeatable method now supported by evidence:** Use authenticated cloud-browser Talk to Jules in the same suitable original-scope task; send exact non-sensitive review text, reviewed SHA, unique receipt and explicit operation boundaries. Wait several minutes, checking the activity/report cards without duplicate nudges; accept only an acknowledgement of the actual instructions. For authorized future coding, still require scoped source/test changes, genuine Node results and independently changed GitHub trees before acceptance. One writer per Jules branch, no duplicate issue labels/tasks, no empty submissions. The browser path removes owner copy/paste for both directions, but needs an active ChatGPT execution; no persistent unattended orchestration is installed or proven.
+
+**NEXT ACTION:** Treat this diagnostic milestone as complete. Preserve closed PR #5 and its task; do not re-fix or republish integrated code. Future separately scoped authorized Jules coding should validate direct-chat corrective implementation before claiming an autonomous review loop. The missing PR-reading tool and publisher backend root cause remain provider-side evidence limits, not a present chat-response access gate.
+
+
 ## Direct cloud-browser diagnostic — delivery verified, reply path unresolved (2026-10-22)
 
 This section supersedes earlier statements that no authenticated Jules browser was available. ChatGPT Work opened the owner's existing task through the cloud browser; the task URL redirected to `/session/7200037830362515152/code/docs/STAGE_REPLAY.md`. Existing sign-in worked without credential, permission, account or billing changes. The UI showed the expected task/branch, Talk to Jules, historical diagnostic report and unchanged four-file +536/-0 diff. The earlier diagnostic is now independently observed **as Jules-authored UI text**; its claimed internal facts are still self-report, not independently inspected shell/backend logs.

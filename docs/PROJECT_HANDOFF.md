@@ -1,5 +1,15 @@
 # Clanker AI — canonical project handoff
 
+## Delayed Jules response — direct two-way diagnostics verified (2026-10-22)
+
+- **Corrected outcome:** Owner noted normal multi-minute Jules latency. After waiting without more messages, ChatGPT directly observed a diagnostic report acknowledging both A/B receipts in the existing task. The previous response-gate classification was premature; it is superseded by this result. No owner prompt/answer relay was needed.
+- **UI behavior:** The answer arrives as a new **Ready for review / Commit message** card with original +536/-0, not necessarily a chat bubble. Read the card without publishing. Thinking ending is not enough to declare failure; allow several minutes and inspect delayed cards before retrying.
+- **Fresh Jules report:** `read_pr_comments` absent from declared tools; no recorded invocation/error because it was never callable. Generic notification included no comment bodies. Reported local status/diffs clean, HEAD `da9b938ce99d2d12b4c219fc540e194f82ccefe8`, tree `5ea977567c323764fe761d39ab8853c01b27600b` (matching independently verified GitHub original/three empty commits). Jules explicitly labels backend-submit explanation **inference**, with no accessible server logs. Exact VM/tool details remain Jules-reported, not independent shell execution.
+- **GitHub after reply:** PR #5 remains closed/unmerged at `a140ae1b9769c173f77aaffc8490e426303acb4c`. Diagnostic response created no new remote commit at the check. No code changes/tests, new task, publish/reopen, credentials, permissions or billing actions.
+- **Method:** authenticated same-task Talk to Jules → exact feedback/SHA/unique receipt → several-minute wait and report-card inspection → acknowledgement → only when coding authorized, source/test diff + genuine Node + independent Git tree verification. Direct two-way **diagnostic communication YES**; direct-feedback corrective coding and unattended orchestration **NOT YET VERIFIED**. See latest section of [JULES_FEEDBACK_INCIDENT.md](JULES_FEEDBACK_INCIDENT.md).
+- **NEXT ACTION:** Diagnostic milestone complete; no more messages to obsolete pilot are needed. For future distinct authorized Jules coding, test this direct-chat correction path without mixed branch writers before accepting autonomy. Product next step remains the offline cursor/reconnect contract below.
+
+
 ## Direct ChatGPT → Jules browser investigation — verified delivery, response gate (2026-10-22)
 
 - **Preflight:** public repo/default `main`, HEAD `b55cd44daedbf492e97c91d2535df0a3efeef35a`; read current AGENTS, README, this handoff, incident and collaboration guide. Authenticated cloud browser successfully accessed the existing Jules task #7200037830362515152 without account/credential/permission changes.
