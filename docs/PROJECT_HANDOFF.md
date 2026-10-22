@@ -1,5 +1,13 @@
 # Clanker AI — canonical project handoff
 
+## Jules pilot #2 — empty follow-up commit, fixes still outstanding (2026-10-22)
+
+- **Observed Jules response:** [PR #5](https://github.com/dossja88/clanker-live-chat/pull/5) advanced from `a888e1a8366ea09ec0461fb4a3a6005f395515b4` to `704f7ede11664f2b3ceab94b05af6d36d87c8fe8`, both commits authored by `google-labs-jules[bot]`. GitHub commit objects prove the **same exact tree SHA** `5ea977567c323764fe761d39ab8853c01b27600b` at both heads, `compare_commits` reports **0 changed files**, and `src/offline-stage-replay.cjs` / `tests/stage-replay.cjs` retain blobs `8c54e07aed700673d206cdba1b772878e12a72e6` / `e12a0d6466fee611eeee03689f95589b2162f7b2`. Jules's first feedback reaction and descendant commit are verified, but **no defect was fixed**.
+- **Two unchanged defects (independently reproduced in V8/CommonJS shim, not real Node):** Cloning `ownerContext` breaks valid identity-bound host authorization; shallow-freeze of receiver event leaves nested `latest.board` and `receivedEvents` board arrays mutable/aliased, permitting inconsistent `highestTile` snapshots.
+- **Same-task corrective request reissued** on [PR #5 comment 6331857098](https://github.com/dossja88/clanker-live-chat/pull/5#issuecomment-6331857098). It requests a genuine file diff in `src/offline-stage-replay.cjs` and `tests/stage-replay.cjs`, descendant commit, valid identity auth and deeply immutable snapshots, actual Node 20+ results for all eight suites; no new Jules task, duplicate issue label, reviewer write to Jules branch or merge.
+- **Next check:** Retrieve Jules PR #5 HEAD and compare tree SHA/content blobs; only if code/tests changed, independently retest both negative cases and full Node suite at exact candidate, then consider safe steward integration. Until then status = **JULES_FEEDBACK_SEEN_BUT_NOT_APPLIED**; all project approvals, rights, cost, privacy, STOP and publication gates remain intact.
+
+
 ## Jules pilot #2 — first implementation independently reviewed (2026-10-22)
 
 - **Observed:** [Jules task 7200037830362515152](https://jules.google.com/task/7200037830362515152), created by single-dispatch [issue #4](https://github.com/dossja88/clanker-live-chat/issues/4), opened [PR #5](https://github.com/dossja88/clanker-live-chat/pull/5) from exclusively Jules-owned branch `jules-7200037830362515152-27dcd84d` at HEAD `a888e1a8366ea09ec0461fb4a3a6005f395515b4`. Only four new files: `src/offline-stage-replay.cjs`, `tests/stage-replay.cjs`, `scripts/run-offline-stage-replay.cjs`, `docs/STAGE_REPLAY.md`. No agent-policy/handoff Markdown, browser HTML, or cloud/credentials changes. Jules PR body attests that eight Node test suites passed; this remains **Jules's report, not independent Node verification**.
