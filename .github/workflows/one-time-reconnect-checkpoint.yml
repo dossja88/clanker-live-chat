@@ -1,0 +1,30 @@
+name: One-time reconnect checkpoint Node verification
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+    paths:
+      - .github/workflows/one-time-reconnect-checkpoint.yml
+
+permissions:
+  contents: read
+
+jobs:
+  offline-test:
+    if: ${{ github.event.pull_request.number == 10 && github.event.pull_request.head.repo.full_name == 'dossja88/clanker-live-chat' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout pinned PR source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record source and Node runtime
+        run: |
+          git rev-parse HEAD
+          node --version
+          git --version
+      - name: All offline suites, bounded
+        run: node scripts/run-offline-tests.cjs
