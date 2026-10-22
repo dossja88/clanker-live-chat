@@ -406,6 +406,120 @@ function runTests() {
     assert.strictEqual(receiver.status().totalAcceptedLifetime, 3);
   });
 
+  // 15. Reentrancy flaw reproduction & protection tests (CLANKER-REVIEW-3-R1)
+  test('reentrant rotateEpoch attempt throws and leaves outer state intact', () => {
+    let receiver;
+    let inside = false;
+
+    receiver = Reconnect.createStageReconnectReceiver({
+      epoch: 1,
+      authorizeOwner: () => {
+        if (!inside) {
+          inside = true;
+          // Synchronously attempt nested rotation
+          assert.throws(() => receiver.rotateEpoch(3, {}), /Reentrant mutation rejected/);
+        }
+        return true;
+      }
+    });
+
+    const rotated = receiver.rotateEpoch(2, {});
+    assert.strictEqual(rotated.epoch, 2);
+    assert.strictEqual(receiver.status().epoch, 2);
+  });
+
+  test('reentrant rotateEpoch with outer failure leaves initial state intact', () => {
+    let receiver;
+    let entered = false;
+
+    receiver = Reconnect.createStageReconnectReceiver({
+      epoch: 1,
+      authorizeOwner: () => {
+        if (!entered) {
+          entered = true;
+          assert.throws(() => receiver.rotateEpoch(3, {}), /Reentrant mutation rejected/);
+          throw new Error('outer failure');
+        }
+        return true;
+      }
+    });
+
+    const statusBefore = receiver.status();
+
+    assert.throws(() => receiver.rotateEpoch(2, {}), /outer failure/);
+    assert.deepStrictEqual(receiver.status(), statusBefore);
+    assert.strictEqual(receiver.status().epoch, 1);
+  });
+
+  test('reentrant receive attempt during authorizeOwner callback throws without side effects', () => {
+    const { supervisor, obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    let receiver;
+    let inside = false;
+
+    receiver = Reconnect.createStageReconnectReceiver({
+      epoch: 1,
+      authorizeOwner: () => {
+        if (!inside) {
+          inside = true;
+          assert.throws(() => receiver.receive({ epoch: 1, json: sample1.json }), /Reentrant mutation rejected/);
+        }
+        return true;
+      }
+    });
+
+    receiver.rotateEpoch(2, {});
+    assert.strictEqual(receiver.status().epoch, 2);
+    assert.strictEqual(receiver.getLatest(), null);
+
+    // Valid receive after rotation completes succeeds
+    supervisor.tick();
+    const sample2 = obs.sample(1010);
+    const accepted = receiver.receive({ epoch: 2, json: sample2.json });
+    assert.strictEqual(accepted.revision, 2);
+  });
+
+  test('read-only status() and getLatest() remain usable during authorizeOwner callback', () => {
+    const { obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    let receiver;
+    let inside = false;
+
+    receiver = Reconnect.createStageReconnectReceiver({
+      epoch: 1,
+      authorizeOwner: () => {
+        if (!inside) {
+          inside = true;
+          assert.strictEqual(receiver.status().epoch, 1);
+          assert.deepStrictEqual(receiver.getLatest(), acceptedBefore);
+        }
+        return true;
+      }
+    });
+
+    const acceptedBefore = receiver.receive({ epoch: 1, json: sample1.json });
+    receiver.rotateEpoch(2, {});
+    assert.strictEqual(receiver.status().epoch, 2);
+  });
+
+  test('guard is properly released after exceptions so future operations work', () => {
+    const { obs } = setupPipeline(1);
+    const sample1 = obs.sample(1000);
+
+    const receiver = Reconnect.createStageReconnectReceiver({
+      epoch: 1,
+      authorizeOwner: () => { throw new Error('Auth fail'); }
+    });
+
+    assert.throws(() => receiver.rotateEpoch(2, {}), /Auth fail/);
+
+    // Guard released, normal receive still works
+    const accepted = receiver.receive({ epoch: 1, json: sample1.json });
+    assert.strictEqual(accepted.revision, 1);
+  });
+
   console.log(`\nALL ${passedCount} STAGE RECONNECT TESTS PASSED.`);
 }
 

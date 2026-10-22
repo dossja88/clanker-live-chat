@@ -30,6 +30,7 @@ Validates and ingests a fenced envelope containing an encoded Stage Protocol eve
   - Rejects timestamp rollback (`at < lastAcceptedAt`).
   - Same epoch sequence cursor strictly increases.
   - Same-revision game-state fields must remain identical across duplicate emissions (ignoring `sequence` and `at`).
+- **Reentrancy Protection**: Synchronous reentrant calls to `receive` or `rotateEpoch` while a mutation is in progress throw an error without altering receiver state.
 - **Deep Immutability**: Returns a deeply frozen, detached copy of the accepted event.
 - **Atomicity**: Failed operations throw an Error and leave all cursor/epoch/lifetime state completely untouched.
 
@@ -37,6 +38,7 @@ Validates and ingests a fenced envelope containing an encoded Stage Protocol eve
 Rotates the active epoch to a strictly greater numeric value after owner authorization.
 - Requires `nextEpoch > currentEpoch`.
 - Invokes `authorizeOwner(ownerContext, 'rotateEpoch')`. Rotation proceeds ONLY if callback returns exact boolean `true`.
+- **Reentrancy Protection**: Shared mutation-in-progress guard prevents reentrant calls to `rotateEpoch` or `receive` during `authorizeOwner` callback execution. Reentrant mutators throw without changing state; outer failure leaves initial state intact. Read-only methods (`status()` and `getLatest()`) remain accessible.
 - **Cursor Reset**: Resets per-epoch sequence cursor to 0. Lifetime count, accepted revision floor, timestamp floor, and STOP protection are strictly preserved.
 - Returns a frozen `status()` object.
 
@@ -62,8 +64,11 @@ Returns a frozen snapshot of receiver state:
 ## Security Boundaries & Caller Responsibilities
 
 1. **NOT Authentication or Transport**: This wrapper does NOT authenticate network endpoints, encrypt communications, provide transport reliability, or manage network sockets.
-2. **Caller Responsibilities**:
+2. **Synchronous Reentrancy Boundary**:
+   - The receiver guarantees internal state atomicity and reentrancy safety by throwing if `receive` or `rotateEpoch` is invoked synchronously from within an `authorizeOwner` callback.
+   - Any external side effects or state changes triggered within an `authorizeOwner` callback or object property getter before a receiver failure occurs are outside this wrapper's control and cannot be rolled back by this guard.
+3. **Caller Responsibilities**:
    - The trusted host caller is strictly responsible for providing a **durable, monotonic epoch source** and securing the `authorizeOwner` context.
    - Caller must ensure envelopes originate from verified local observer projections.
-3. **Display Protocol Only**: Stage envelopes never actuate the session supervisor or alter gameplay state.
-4. **Offline Isolation**: Operates entirely offline with zero network, server, timer, or cloud dependencies.
+4. **Display Protocol Only**: Stage envelopes never actuate the session supervisor or alter gameplay state.
+5. **Offline Isolation**: Operates entirely offline with zero network, server, timer, or cloud dependencies.
