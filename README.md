@@ -25,6 +25,8 @@ This GitHub repository is **public** as verified on 2026-10-20. Never commit acc
 
 ## Reproducible safety and behavior tests
 
+Run the complete local suite with `node scripts/run-offline-tests.cjs`. It discovers every `.cjs` suite in `tests/`, runs them sequentially with the current Node executable, and exits nonzero on the first failure, timeout or empty suite inventory. Each suite has a five-minute bound. This is a manual local command, not installed CI or an agent scheduler; it needs no package installation or credentials. Individual commands below remain available for focused checks.
+
 Run `node tests/regression.cjs` from the repository root using Node.js 20+ (no `npm install`, environment variables, credentials, network, or third-party packages). The script reads `index.html` and executes its real inline JavaScript with a **synthetic browser DOM**, then runs the built-in safety checks, five offline Crew/dialogue cases, and mocked Twitch EventSub WebSocket and manual-reply paths. An uncaught failure exits nonzero. The tool does **not** prove physical voice playback, real Twitch viewer delivery, browser geometry, Gemini output, real game control, or GitHub Pages deployment.
 
 **Safety:** The fake Twitch token and IDs exist only inside the test process; outbound network calls are blocked/explicitly mocked. It never posts to Twitch or stores user data. It does not add a recurring job or CI infrastructure.
