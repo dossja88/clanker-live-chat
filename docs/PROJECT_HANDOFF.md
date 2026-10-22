@@ -1,5 +1,26 @@
 # Clanker AI — canonical project handoff
 
+## Read-only 2048 stage status protocol v1 and offline tests milestone — 2026-10-22
+
+- **Milestone Task:** Implement dependency-free read-only stage status event protocol v1 (`src/stage-protocol.cjs`) for future untrusted renderers, independent of DOM, Twitch, and network.
+- **Base Commit:** `5824afa18c77c8dd5ef4426979cdb7e7ab5eb756` (HEAD on `main`). Work performed on new working branch. Target PR branch: `main`.
+- **Implementation (`src/stage-protocol.cjs`):**
+  - Pure explicit allowlist projector (`projectStageEvent`) from validated supervisor checkpoints.
+  - Deterministic sorted key JSON encoder (`encodeStageEvent`) with strict byte size limit enforcement (<= 2048 bytes).
+  - Strict versioned receiver/validator (`parseStageEvent`, `validateStageEvent`) enforcing non-power-of-two tile rejection, board dimension checks, status/phase consistency, and monotonic sequence/revision tracking.
+  - Rejects unknown or nested fields, prototype pollution attempts, malformed JSON, out-of-order or replayed revisions, and operator instruction injection (`action`, `command`, `token`, `operator`, etc.).
+  - Explicit distinction preserved: sanitized display projection is NOT authentication and may NOT accept operator instructions.
+- **Offline Test Suite (`tests/protocol2048.cjs`):**
+  - 9 test categories covering valid supervisor state projection, deterministic key ordering, payload size limits, malformed JSON, oversized payloads, extra/missing fields, cross-field leaks, instruction injections, prototype pollution, board/tile sanity, phase/status contradictions, sequence/revision monotonicity, and persistent STOP state protection against outdated un-stop attempts.
+- **Execution & Test Verification Results (Node.js v22):**
+  - `node tests/regression.cjs`: **PASS** (59/59 assertions, 0.08s)
+  - `node tests/headless2048.cjs`: **PASS** (4/4 assertions, 0.05s)
+  - `node tests/supervisor2048.cjs`: **PASS** (8/8 assertions, 0.06s)
+  - `node tests/benchmark2048.cjs`: **PASS** (24 dev + 24 holdout seeds, 0.09s)
+  - `node tests/protocol2048.cjs`: **PASS** (9/9 categories, 0.04s)
+- **Exclusions & Hard Safeguards:** No dependencies added, no external network calls, no Twitch/OAuth modifications, no new cloud host, no billable API usage, no third-party viewer data captured, no public stage.html layout changes or browser regression.
+- **Next Action:** Propose PR targeting `main` without direct merging, auto-merging, pushing directly to `main`, or initiating further automated tasks.
+
 ## Conditional creator Drive review cleanup policy (2026-10-21)
 
 Owner selected recommendation/approval-first cleanup across projects where dedicated creator Drive is later used for authorized browser-viewable private media. Explicitly temporary previews become suggested deletion candidates **after** genuine owner evaluation and verified source/master/milestone preservation; no automatic trash, personal-account cleanup, other-project cleanup or destructive response to `go`. Public repository must not disclose creator account email, private Drive IDs/links or credentials. This updates the future-use guidance in `AGENTS.md` only: **no new Drive integration, media generation, account access, billing, upload, storage archive or publication** is authorized or executed. The existing browser-first Clanker experience remains unaffected. A separate redundant protected-original archive may be evaluated later without changing current project operation.

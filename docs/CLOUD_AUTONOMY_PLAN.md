@@ -31,7 +31,8 @@
    │  Minimal persistent game state, encrypted     │
    │  owner settings, protected secrets            │
    └───────────────────┬───────────────────────────┘
-                       │ sanitized and authenticated state
+                       │ Stage Protocol v1 (src/stage-protocol.cjs)
+                       │ sanitized, versioned, read-only status event
                        ▼
               Render + locally approved voice
                        │ (optional dedicated media worker)
@@ -40,7 +41,7 @@
                     [separate go-live gate]
 ```
 
-The current `stage.html` can inform the renderer, but origin-scoped BroadcastChannel is not the protocol for a cross-host production connection. Never bridge Twitch tokens, raw viewer records, Gemini keys, OAuth callback fragments or full local memory to the stage or a public spectator dashboard. A future remote state link needs strict schema/versioning, authenticated **owner** controls and a separately designed public sanitized display feed.
+The current `stage.html` can inform the renderer, but origin-scoped BroadcastChannel is not the protocol for a cross-host production connection. Never bridge Twitch tokens, raw viewer records, Gemini keys, OAuth callback fragments or full local memory to the stage or a public spectator dashboard. `src/stage-protocol.cjs` defines Stage Protocol v1 (`clanker.local2048.stage.v1`), providing a strict versioned receiver/validator, pure explicit allowlist projection, deterministic sorted encoding, payload size bounds (2048 bytes), and instruction rejection.
 
 ## Engineering phases and acceptance evidence
 
@@ -50,11 +51,13 @@ Extract pure local 2048 board initialization, deterministic replay, strategy, an
 
 **Accept when:** identical seeded score/move traces in browser adapter and headless Node module, verified win/loss and no illegal actions, no network calls, preserved local memory formats, no need to keep any browser tab open for the headless engine.
 
-### B. Autonomous session supervisor — development before public operation
+### B. Autonomous session supervisor & stage protocol — development before public operation
 
 A bounded state machine controls approved game selection, session start/stop, rate limits, game state and deterministic recovery after a process crash. A watchdog/restart flow can reconnect without losing track of active permissions. Owner-initiated STOP disables game actuation fail-closed; a fresh explicit approved session policy (duration/schedule/allowed game) must exist before production auto-start or auto-resume. Viewer input remains **advisory only**. Use no simulated encounters as false claims of real gameplay.
 
-**Accept when:** a local test can crash/restart a mocked supervisor, restore a game checkpoint, replay consistently, uphold session budget, clear/forget viewer information, and never exceed allowed actions. No new cloud account or broadcast required.
+A pure explicit allowlist projector (`src/stage-protocol.cjs`) exposes validated supervisor state to untrusted renderers via `clanker.local2048.stage.v1` events. It enforces monotonic sequence/revisions, bounded message sizes, tile/board sanity, and rejects instruction injection or cross-field leaks.
+
+**Accept when:** a local test can crash/restart a mocked supervisor, restore a game checkpoint, replay consistently, uphold session budget, clear/forget viewer information, emit validated stage protocol v1 events, reject malformed/injection payloads, and never exceed allowed actions. No new cloud account or broadcast required.
 
 ### C. Cloud readiness — explicit future access gate
 
@@ -66,7 +69,7 @@ Candidate technologies require up-to-date feasibility checking. As of 2026-10-21
 
 ### D. Protected service interface and optional offline/low-cost speech
 
-Add secured owner-only status and emergency controls; keep a narrow read-only spectator/renderer data contract. Plan native/server-compatible speech synthesis, not a dependency on browser-specific Xbox TTS. Clanker's deeper, warm, slightly mechanical voice and nine original expressions must persist; new animation/voice machinery must respect the character. The language engine needs an offline fallback and conservative bounded model usage, not an unverified free unlimited AI API. Support per-viewer forgetting and data minimization in server-side storage.
+Add secured owner-only status and emergency controls; keep a narrow read-only spectator/renderer data contract via Stage Protocol v1 (`clanker.local2048.stage.v1`). Plan native/server-compatible speech synthesis, not a dependency on browser-specific Xbox TTS. Clanker's deeper, warm, slightly mechanical voice and nine original expressions must persist; new animation/voice machinery must respect the character. The language engine needs an offline fallback and conservative bounded model usage, not an unverified free unlimited AI API. Support per-viewer forgetting and data minimization in server-side storage.
 
 **Accept when:** external unauthorized requests cannot influence gameplay, owner STOP works after reconnect/restart, memory recovery is deterministic and privacy tests pass, voice/render offline prototype remains $0 and does not leak private data.
 
@@ -107,10 +110,12 @@ The reusable `src/2048-core.cjs` defines `createGame(random)`, `advanceGame(chec
 
 The headless CLI `scripts/run-headless2048.cjs` is **manual and bounded**, not a daemon. The next part of Phase A/B is a bounded session coordinator that can consume these serializable board/PRNG checkpoints, prove fail-closed recovery, enforce owner STOP across restarts and later integrate an actual approved game and rendering host. Do not mistake a single manual CLI run or deterministic local puzzle victory for 24/7 cloud autonomy.
 
-## Phase B implementation: bounded recoverable local supervisor (2026-10-21)
+## Phase B implementation: bounded recoverable local supervisor & stage protocol (2026-10-21)
 
 `src/session-supervisor.cjs` is a portable, synchronous orchestrator built on the pure 2048 engine. `createSupervisor({store,authorizeOwner})` requires explicit host-managed authorization and a transactional store interface: `read()` plus `commit(expectedRevision,nextState)`. No default owner permission is granted. `start` requires a trusted callback response and one of the existing 128/512/1024-move budgets. A live `running` session stores its RNG and whole game atomically after **every** legal move. A reconstructed supervisor may resume that bounded session, but a persisted STOP, loss, win or cap prevents continuation. A stale concurrent worker cannot overwrite a STOP because the revision CAS fails. Neither Twitch viewer opinions nor CLI argument text are accepted as owner credentials.
 
+`src/stage-protocol.cjs` provides the Stage Protocol v1 (`clanker.local2048.stage.v1`) adapter for untrusted renderers. It projects validated supervisor checkpoints into deterministic, sanitized, bounded (<2048 bytes) JSON status events, enforcing monotonic sequence/revisions and rejecting instruction injection, extra fields, or malformed data.
+
 The memory adapter verifies restart semantics; `src/supervisor-file-store.cjs` provides an optional owner-controlled **single-filesystem** lock + atomic rename checkpoint adapter for a later private Node host. It fails closed on unknown owner paths, unsafe permissions, corrupted state, stale locks and concurrent revisions. Its local-disk semantics are **not** sufficient by themselves for distributed cloud storage: the future deployment must provide host-authenticated owner controls, strong conditional writes/fencing, encrypted storage if sensitive data is ever added, crash recovery policies, secrets handling, and tested shutdown under actual Node. Source is free/dependency-free; this update provisions no server or account.
 
-The manual `scripts/local-session-supervisor.cjs` demonstrates finite start/status/run/STOP processes without background jobs, and `tests/supervisor2048.cjs` exercises failure/race cases. `docs/SESSION_SUPERVISOR.md` owns detailed operational cautions. **This is a Phase B code foundation, not continuous cloud autonomy or a broadcasting pipeline**. Production hosting, authenticated remote operator controls, Twitch ingest, voice/media and real publisher game inputs remain distinct proof/authorization gates.
+The manual `scripts/local-session-supervisor.cjs` demonstrates finite start/status/run/STOP processes without background jobs, and `tests/supervisor2048.cjs` and `tests/protocol2048.cjs` exercise failure/race/adversarial cases. `docs/SESSION_SUPERVISOR.md` owns detailed operational cautions. **This is a Phase B code foundation, not continuous cloud autonomy or a broadcasting pipeline**. Production hosting, authenticated remote operator controls, Twitch ingest, voice/media and real publisher game inputs remain distinct proof/authorization gates.
