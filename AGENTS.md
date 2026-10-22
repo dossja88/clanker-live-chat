@@ -1,5 +1,16 @@
 # AGENTS.md — Clanker AI operating rules
 
+## Shared Markdown ownership — proposed integration rule (2026-10-22)
+
+- **One authoritative branch:** For project policy and current status, only the accepted version on `main` is canonical. Copies of `AGENTS.md`, `README.md`, and `docs/PROJECT_HANDOFF.md` on task/review branches are **proposals**, not synchronized instructions for other branches. Before work, read current `main` and then the task branch; reconcile differences explicitly.
+- **Policy owner:** A designated integration reviewer/steward owns accepted changes to `AGENTS.md`, global command semantics, approval/permission boundaries, and the canonical handoff. A coding agent (including Jules) may propose policy changes via its PR or discussion, but must not silently change owner rules or treat a task-branch policy as globally effective.
+- **Progress reporting:** A coding agent posts its task receipt, HEAD SHA, exact tests, blockers, and a *proposed* handoff entry to its GitHub PR/issue. When the scoped task explicitly requires a handoff-file edit, it may include a clearly labeled proposed handoff diff on its **own** branch only. The integration steward alone reconciles accepted progress against the latest `main` handoff; never replace the whole Markdown document with a stale branch copy.
+- **Safe document write:** Check current target branch HEAD and target file blob SHA; prepare a minimal, section-scoped patch against the latest content. Re-read and compare immediately before committing. Use blob-SHA compare-and-swap plus expected branch HEAD / non-force ref update where supported; on a mismatch, stop, re-read, and perform a fresh semantic 3-way reconciliation. Never force-push, blindly retry a stale whole-file replacement, or silently discard a newer section.
+- **Conflict classification:** Same section edited by multiple agents, heading moved/deleted, policy or NEXT ACTION contradictory, or any attempted deletion of established decisions is a semantic conflict even if Git reports a clean merge. Preserve both proposals, flag the overlap in PR review, and choose the accepted text explicitly before integration.
+- **No automatic policy merge:** Status and technical documentation may be integrated after review and tests, but changes to privacy, billing, approval gates, publishing, permissions or owner command meanings require their existing owner-approval boundary. No new CI, branch protection, scheduled agent, or auto-merge is activated by these Markdown instructions.
+- This contract is **currently proposed on draft PR #3**, not enforced on `main` or by GitHub repository settings. A separate reviewed policy integration is required before it governs newly dispatched work.
+
+
 ## Multi-agent GitHub concurrency: Jules pilot lesson (2026-10-22)
 
 - GitHub issue #1 `jules`-label event successfully dispatched the single authorized Jules pilot, and Jules opened PR #2. This establishes dispatch and PR creation, **not** reliable automatic coding-to-merge, automatic review assimilation, continuous agent control, or unrestricted quota.

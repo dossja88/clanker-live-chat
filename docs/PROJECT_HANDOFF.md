@@ -1,5 +1,13 @@
 # Clanker AI — canonical project handoff
 
+## Proposed Markdown single-writer protocol — draft PR #3 (2026-10-22)
+
+- Responding to owner concern about agents overwriting `.md` files: existing per-branch writer separation is necessary but insufficient for shared project policy and handoff documents. This review branch now proposes explicit role-based stewardship of `AGENTS.md` and the one canonical `docs/PROJECT_HANDOFF.md`, with coding-agent results delivered by SHA-linked PR comments or clearly labeled candidate diffs.
+- The accepted `main` branch remains authoritative; work-branch Markdown is only a proposal. At integration, re-read all competing PRs, compare file blobs and branch heads, use minimal section patches, resolve semantic conflicts, and refuse stale whole-file replacement or automated destructive merges.
+- This is **documentation only on draft PR #3**. Current `main` is unchanged; no GitHub branch protections, lock service, scheduled workflow, automation trigger, credentials, billing, publication or auto-merge was configured. These rules are not yet automatically consumed by an already-running Jules task.
+- NEXT ACTION: keep both PRs unmerged, verify the corrected candidate under a genuine Node CLI, then review proposed Markdown ownership rules and integrate only after resolving PR differences and existing gates.
+
+
 ## Jules pilot draft-review fallback — 2026-10-22
 
 - **Review PR:** [#3](https://github.com/dossja88/clanker-live-chat/pull/3) is a **DRAFT** from `review/clanker-stage-protocol-v1` to `main`, opened to preserve independently verified code and the new exclusive-branch-writer instructions without touching the Jules task branch.

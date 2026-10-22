@@ -19,6 +19,19 @@
 - **Verifier:** Require actual Node.js 20+ runs of `node tests/regression.cjs`, `node tests/headless2048.cjs`, `node tests/supervisor2048.cjs`, `node tests/benchmark2048.cjs` and `node tests/protocol2048.cjs` on the **candidate SHA**. Distinguish Jules's attested runs, independent actual runs, and V8 shims. Confirm no credential/network/browser-deploy changes.
 - **Gatekeeper:** Keep production branch, GitHub Pages, OAuth, private data, creator Drive, Twitch/broadcast and real game automation unchanged unless separately approved. Never bypass billing-disabled policy, history preservation, STOP semantics, rights approvals or privacy safeguards.
 
+## Markdown conflict protocol (applies to all project agents after reviewed adoption)
+
+**Maintainer/integration steward is the sole canonical Markdown reconciler.** The repository default branch carries the official `AGENTS.md` policy and the one canonical `docs/PROJECT_HANDOFF.md`. This is role-based, not exclusive to a particular AI provider. An agent's development branch contains only a candidate version.
+
+1. **Before edits:** Read current `main` versions and record the target HEAD SHA, file blob SHA, branch ownership, and specific heading/section intended to change. Do not copy a stale handoff forward wholesale.
+2. **During autonomous coding:** Jules/other executors edit source and task-scoped docs only on their own feature branches. Prefer a structured PR comment with `task/branch/HEAD/test result/blockers/proposed handoff text`; when required by task instructions, put a clearly marked *proposed* handoff update in that PR rather than presenting it as accepted project state.
+3. **During integration:** The steward reads the latest main plus *each competing PR* (including any reviewer branch) and resolves handoff status/decisions by meaning and provenance, not by git line order. For conflicting edits to a common header, NEXT ACTION, gate, test claim or owner instruction, leave the PR pending until one version is explicitly selected, preserving any unresolved evidence.
+4. **Safe write:** Minimal section-scoped edit, check file SHA before update and branch HEAD before commit, use expected-HEAD fast-forward without force. If either SHA moved or a semantic conflict appears, fetch and reconcile again; do not automatically overwrite or replay whole files. Git mergeable does not mean logically conflict-free.
+5. **Commit evidence:** Record accepted merge/commit SHA, source PR/test evidence, authoritative NEXT ACTION and skipped/declined proposals in the single canonical handoff. A draft PR is not a published handoff. Never create a second canonical handoff to avoid conflicts.
+6. **Hard gates:** Policy changes, authorization changes, visibility, private storage, credentials, fees and deployments are never automatically merged. No server-enforced rule, bot, scheduled scan, workflow, or Jules setting change is claimed until separately configured and tested.
+
+For the present pilot: PR #2 is Jules-owned and PR #3 is reviewer-owned. Neither is integrated. The canonical `main` documents **do not yet include these rules**. This procedure is a proposal for adoption, not proof that GitHub will enforce it.
+
 ## Pilot acceptance
 
 The integration may be considered working for initial coding **only** after verified GitHub issue→Jules acceptance→PR. It may be considered reliable for two-way review only when PR comments lead to correctly incorporated feedback without losing reviewed changes. It may be considered autonomous across projects only after idempotent queue/trigger behavior, exact-SHA review, tested outcomes and hard gates are proven. Current outcome: **initial coding YES; bidirectional safe review NO; unattended cross-project orchestration NOT YET**.
