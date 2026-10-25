@@ -18,6 +18,8 @@ Owner would like Clanker's development source to become private, without breakin
 
 ## Goal and currently demonstrated capability
 
+**First-pass quality checkpoint (October 25):** Adopted cross-project acceptance policy in `AGENTS.md`: define real user-facing behavior and verification before building, make an informed first attempt, test actual integrations/observable outcomes rather than mocks, and fix detectable defects before review. This is an **instruction-only change**, not evidence that Twitch integration, real gameplay, cloud hosting or unattended operations have become functional; keep existing gates and actual-status labels unchanged.
+
 Owner's target: characterful independent, **cloud-first autonomous AI VTuber**, playing actual games, maintaining coherent safe Twitch interactions, speaking and rendering without depending on Xbox/PC hosting. The existing [Brain Lab / stage](https://dossja88.github.io/clanker-live-chat/) and local 2048 engine demonstrate **real local/prototype gameplay and offline behavior**, **not** a deployed autonomous Twitch broadcaster or authenticated cloud game operator. Approved robot/voice/personality remain unchanged by these docs. Existing live Twitch EventSub tests were owner-observed historically; no live test was re-run in this batch.
 
 ## Most recent accepted milestone
