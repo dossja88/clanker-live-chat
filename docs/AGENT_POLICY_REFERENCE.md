@@ -1,5 +1,7 @@
 # Clanker AI — detailed former agent instructions
 
+**Current supersession notice — October 25, 2026:** Historical wording below is retained as evidence, not renewed authorization. Current root AGENTS, canonical handoff and latest verified owner decisions prevail. Automatic Codex/Work time estimates are deliberately retired, including older mandatory estimate clauses below; useful reasoning-setting recommendations remain. Do not infer an old rule is active merely because a limited search found no withdrawal. Resolve uncertain scope before the affected action.
+
 Preserved on 2026-10-23 from commit `5c99c6b1f8b809bd58e72c8fb7705877a1f82480` to retain the owner's exact pre-consolidation multi-agent, safety and character policies. Current [root AGENTS.md](../AGENTS.md) contains the mandatory compact entrypoint; this file is a topic-selective reference, **not another handoff**. Do not treat dated sessions/task approvals as standing authorization. Full old handoff remains in Git history.
 
 ---
