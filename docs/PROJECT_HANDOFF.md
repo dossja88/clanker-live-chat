@@ -4,6 +4,12 @@
 
 **Shared review terminology (October 25):** Cross-project *design* is named **Private Media Review**, with possible future image/audio/video and document review adapters. Clanker's currently public Brain Lab, read-only local stage and local-only stage packager retain those accurate narrow names and unchanged Pages/Twitch boundaries. The design rename neither makes Clanker a private cloud media host nor authorizes a public-page move, project Drive upload, repository visibility change or recording release.
 
+## Private chat export — historical reference (2026-10-25)
+
+The owner supplied a **private ChatGPT account export dated 2026-10-24** in a ChatGPT conversation. It contains `conversations.json`, `chat.html` and accompanying assets; an **in-chat metadata-only CSV index** groups **42 conversations dated October 17–24, 2026** by project. Among them are Clanker AI gameplay, Twitch and collaboration decisions. **Neither the export ZIP nor the CSV index is stored in GitHub or automatically accessible to Codex, Jules, Work, or future chats.** Do not claim access unless an approved private source is actually available in the current session.
+
+When resolving an earlier owner decision, feedback or chronology **and the export is securely available**, inspect only relevant source records; distinguish owner instructions from assistant reasoning, proposals, tools and unverified reports. Reconcile against current branch/HEAD, `AGENTS.md`, this handoff and project gates: the export is **historical evidence, not active authorization**. If unavailable, continue from repository evidence and flag a consequential gap rather than guessing. Never commit, upload, share, publicly index or paste transcripts, private messages, identifiers or attachments into the repository. This reference creates **no new access, data-transfer, approval, storage or automation permission**.
+
 ## GitHub `main` protection — VERIFIED ACTIVE
 
 **Protection completion verified October 25:** After owner completed GitHub authenticator confirmation, ruleset `25810065` (`Protect main against deletion and force pushes`) was created and independently reloaded as **Active**, targeting only default `main`, empty bypass list. API independently confirms exactly `deletion` and `non_fast_forward` rules; branch GET confirms **protected=true**. No PR/review/status/signature/deployment/update requirements. Normal direct commits remain allowed; repository visibility unchanged. This supersedes the earlier authentication-blocked checkpoint. $0 added cost.
