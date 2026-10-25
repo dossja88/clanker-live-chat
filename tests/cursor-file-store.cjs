@@ -129,6 +129,49 @@ try{
   assert.equal(child.status,0,child.stderr);
   assert.equal(JSON.parse(child.stdout).epoch,3);
   pass('genuine separate Node process reads durable trusted checkpoint');
+  // A dangling symlink must not be treated as an absent checkpoint/lock.
+  // fs.existsSync() follows symlinks and would otherwise return false here.
+  const dangling=path.join(directory,'dangling-cursor.json');
+  const missing=path.join(directory,'no-such-target.json');
+  const danglingStore=Disk.createCursorFileStore(dangling);
+  fs.symlinkSync(missing,dangling);
+  fs.symlinkSync(missing+'.fence',dangling+'.fence');
+  assert.throws(()=>danglingStore.read(),/Unsafe/);
+  fs.unlinkSync(dangling);
+  fs.unlinkSync(dangling+'.fence');
+  fs.symlinkSync(missing,dangling+'.lock');
+  assert.throws(()=>danglingStore.read(),/locked/);
+  fs.unlinkSync(dangling+'.lock');
+  assert.equal(danglingStore.read(),null);
+  pass('dangling checkpoint, fence and lock symlinks cannot impersonate missing state');
+
+  // Force a genuine write interruption BETWEEN the two same-directory
+  // renames; it must yield a non-recoverable torn pair, not silently reset.
+  const torn=path.join(directory,'interrupted-cursor.json');
+  const tornStore=Disk.createCursorFileStore(torn);
+  const probe=freshReceiver(1);
+  const checkpointBefore=probe.exportCheckpoint();
+  assert.equal(tornStore.commit(0,checkpointBefore),true);
+  probe.receive(packet(1,310,1));
+  const checkpointAfter=probe.exportCheckpoint();
+  const rename=fs.renameSync;
+  let hitFence=false;
+  try{
+    fs.renameSync=function(from,to){
+      if(to===torn+'.fence'&&!hitFence){
+        hitFence=true;
+        throw Error('injected-interruption-between-renames');
+      }
+      return rename.apply(this,arguments);
+    };
+    assert.throws(()=>tornStore.commit(1,checkpointAfter),
+      /injected-interruption-between-renames/);
+  }finally{fs.renameSync=rename;}
+  assert.equal(hitFence,true);
+  assert.equal(fs.existsSync(torn+'.lock'),false);
+  assert.throws(()=>tornStore.read(),/mismatch/);
+  pass('injected crash between checkpoint and fence renames fails closed');
+
   // Detect a one-sided rollback. A malicious rollback of BOTH files requires
   // a separate trusted monotonic counter outside this local directory.
   fs.writeFileSync(checkpointFile,older,{mode:0o600});

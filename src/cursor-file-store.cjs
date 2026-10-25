@@ -62,9 +62,15 @@ function createCursorFileStore(filename){
   if(process.platform!=='win32'&&((dir.mode&0o077)!==0||
     typeof process.getuid==='function'&&dir.uid!==process.getuid()))
     throw Error('Cursor directory must be owner-only (0700).');
+  function existingEntry(file){
+    // existsSync follows symlinks and reports false for a dangling link.
+    // lstat must distinguish that unsafe entry from a truly missing file.
+    try{return fs.lstatSync(file);}
+    catch(e){if(e?.code==='ENOENT')return null;throw e;}
+  }
   function secureRead(file){
-    if(!fs.existsSync(file))return null;
-    const meta=fs.lstatSync(file);
+    const meta=existingEntry(file);
+    if(meta===null)return null;
     if(!meta.isFile()||meta.isSymbolicLink()||meta.size>MAX_RECORD_BYTES||
       process.platform!=='win32'&&((meta.mode&0o077)!==0||
         typeof process.getuid==='function'&&meta.uid!==process.getuid()))
@@ -74,7 +80,8 @@ function createCursorFileStore(filename){
     return data;
   }
   function readPair(locked=false){
-    if(!locked&&fs.existsSync(lock))throw Error('Cursor store locked; refuse partial read.');
+    if(!locked&&existingEntry(lock)!==null)
+      throw Error('Cursor store locked; refuse partial read.');
     const raw=secureRead(filename),anchor=secureRead(fence);
     if(raw===null&&anchor===null)return null;
     if(raw===null||anchor===null)
