@@ -32,6 +32,8 @@ Label exploration=feasibility, prototype=limited capability, review candidate=in
 
 - **Clanker check:** gameplay/streaming terms, Twitch/OAuth, identity/voice rights and actual unattended hosting; test each actual intended use separately before production. 
 
+**Rights-before-media-production rule (new, additive):** Before selecting an external voice, game recording, music/SFX, model, avatar material, overlay or clips for public/monetized streaming, use [the original stream-media rights preflight](docs/STREAM_MEDIA_RIGHTS_PREFLIGHT_2026-10-28.md). Record exact intended use, source/version, permission/credit, privacy, dependency, and change-triggered recheck. Unknown game soundtrack or third-party source is `RIGHTS_HOLD`, not a default right to broadcast or redistribute. Offline original-code tests remain allowed within current scope; this rule grants **no** live host, Twitch account access, rights cross-transfer or publication.
+
 ## Security, privacy, economics and external gates
 
 - Keep existing public repository visibility and GitHub Pages boundaries; never commit passwords, OAuth codes/secrets/tokens, private Twitch messages, customer data, private memory, broadcaster credentials, PII, account recovery, or unpublished private assets. Respect `forget`, queue cancellation and privacy/schema invariants and do not publish viewer content into Git. Do not create/expand Twitch/OAuth scopes or third-party permissions without owner security approval. Browsers cannot silently inherit a host identity.
