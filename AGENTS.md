@@ -2,6 +2,8 @@
 
 **Repository:** `dossja88/clanker-live-chat` (**PUBLIC**) on verified active branch, normally `main`. This is Clanker AI the VTuber/game character, *not* Sleep or Footage. [Current handoff](docs/PROJECT_HANDOFF.md); [detailed previous owner decisions](docs/AGENT_POLICY_REFERENCE.md). The GitHub Pages app is a development/viewer experience, **not** a running cloud bot or autonomous Twitch service.
 
+**Shared cross-project image-generation method (owner, October 29):** For separately authorized new or edited images, default to one coherent scene/frame per generation, **not** accidental multi-panel collages; honor explicitly requested grids, contact sheets and storyboards. Anchor recurring people, props, locations and style to source-verified/owner-accepted references and the correct chronological or state sequence. Prefer genuinely masked local retouch to unnecessary full rerolls; inspect actual outputs for panel boundaries, identity, composition, object state, text, seams, source rights and intended editable format. A prompt/seed, hash, metadata test or tool listing does not prove visual correctness, model availability or owner acceptance. Project-specific privacy, rights, cost, media and release gates remain binding; no new generation/transfer/purchase permission follows.
+
 ## Character and end state
 
 Before character/viewer/Twitch behavior changes, read the character/safety sections of [prior owner policy](docs/AGENT_POLICY_REFERENCE.md), resolving dated conflicts against this entrypoint. Before autonomy/hosting work, read [cloud plan](docs/CLOUD_AUTONOMY_PLAN.md). Viewer advice never directly controls gameplay or privileges; optional polls/tips/soundboards are ideas until separately authorized.
